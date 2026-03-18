@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demand Intelligence MVP</title>
+  <link rel="stylesheet" href="./prototype.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">D</div>
+        <div>
+          <div class="title">Demand Intelligence MVP</div>
+          <div class="subtitle">面向业务线负责人的需求情报决策台</div>
+        </div>
+      </div>
+      <div class="topbar-side">
+        <div class="meta" id="meta-pills"></div>
+        <div class="auth-panel" id="auth-panel"></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="view-tabs" id="view-tabs"></div>
+      <div class="filters">
+        <div class="chip is-active" id="market-chip">市场：美国 dropshipping</div>
+        <div class="chip" id="range-chip">周期：近 30 天</div>
+        <div class="chip" id="confidence-chip">Confidence：High</div>
+        <label class="inline-select">
+          <span>刷新模式</span>
+          <select id="refresh-mode-select">
+            <option value="seeded">seeded</option>
+            <option value="browser">browser</option>
+          </select>
+        </label>
+        <button type="button" class="button secondary" id="refresh-study-button">刷新当前 Study</button>
+      </div>
+    </div>
+
+    <section id="study-rail"></section>
+
+    <section id="view-dashboard"></section>
+    <section id="view-operations" class="hidden"></section>
+    <section id="view-setup" class="hidden"></section>
+    <section id="view-segments" class="hidden"></section>
+    <section id="view-packaging" class="hidden"></section>
+    <section id="view-weekly" class="hidden"></section>
+  </div>
+
+  <div class="toast-stack" id="toast-stack"></div>
+
+  <script src="./data/fishgoo-dashboard-payload.js"></script>
+  <script src="./mvp-app.js"></script>
+</body>
+</html>

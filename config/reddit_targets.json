@@ -1,0 +1,33 @@
+{
+  "subreddits": [
+    "dropship",
+    "dropshipping",
+    "ecommerce",
+    "shopify",
+    "woocommerce"
+  ],
+  "search_terms": [
+    "need help",
+    "looking for",
+    "recommend",
+    "developer",
+    "freelancer",
+    "agency",
+    "not converting",
+    "checkout error",
+    "supplier",
+    "ads not working",
+    "site speed",
+    "migration"
+  ],
+  "listing_sort": "new",
+  "time_filter": "month",
+  "limit_per_request": 25,
+  "pages_per_term": 2,
+  "include_listing_fetch": true,
+  "request_delay_seconds": 1.5,
+  "browser_wait_seconds": 12,
+  "browser_scroll_rounds": 1,
+  "browser_scroll_delay_seconds": 1.0,
+  "browser_between_pages_seconds": 1.0
+}

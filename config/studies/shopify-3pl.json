@@ -1,0 +1,27 @@
+{
+  "subreddits": [
+    "ecommerce",
+    "shopify",
+    "entrepreneur"
+  ],
+  "search_terms": [
+    "shopify fulfillment",
+    "3PL partner",
+    "shipping costs",
+    "private label supplier",
+    "warehouse",
+    "inventory",
+    "returns",
+    "conversion drop"
+  ],
+  "listing_sort": "new",
+  "time_filter": "month",
+  "limit_per_request": 25,
+  "pages_per_term": 1,
+  "include_listing_fetch": true,
+  "request_delay_seconds": 1.5,
+  "browser_wait_seconds": 12,
+  "browser_scroll_rounds": 1,
+  "browser_scroll_delay_seconds": 1.0,
+  "browser_between_pages_seconds": 1.0
+}

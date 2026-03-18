@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "id": "admin-demo",
+      "name": "Admin Demo",
+      "email": "admin@local",
+      "password": "admin123",
+      "role": "admin",
+      "token": "admin-demo-token"
+    },
+    {
+      "id": "analyst-demo",
+      "name": "Analyst Demo",
+      "email": "analyst@local",
+      "password": "analyst123",
+      "role": "analyst",
+      "token": "analyst-demo-token"
+    },
+    {
+      "id": "viewer-demo",
+      "name": "Viewer Demo",
+      "email": "viewer@local",
+      "password": "viewer123",
+      "role": "viewer",
+      "token": "viewer-demo-token"
+    }
+  ]
+}

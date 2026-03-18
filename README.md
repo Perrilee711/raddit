@@ -1,0 +1,291 @@
+# Reddit Leads Research
+
+这个仓库用来把 Reddit 里的电商需求线索，整理成可阅读、可实施的研究文档。
+
+当前提供：
+
+- `docs/reddit-client-research-playbook.md`：找客户、识别需求、总结共性的中文实施手册
+- `config/reddit_targets.json`：默认抓取版块和关键词配置
+- `scripts/reddit_intel_pipeline.py`：自动抓取 + 自动出报告的一键流水线
+- `scripts/reddit_browser_pipeline.py`：通过本机 Chrome 会话抓取 Reddit 页面并自动出报告
+- `scripts/reddit_research_report.py`：把抓取结果整理成 Markdown 报告
+- `.env.example`：Reddit OAuth 凭证示例
+- `data/examples/reddit_posts_demo.jsonl`：本地演示数据
+- `docs/reports/`：脚本输出的研究报告目录
+- `docs/product/`：需求情报决策台原型与 MVP 页面
+- `scripts/build_demand_intelligence_payload.py`：把 Reddit 样本映射成决策台 payload
+- `scripts/demand_intelligence_server.py`：最小后端服务，提供 API + 托管 MVP 页面
+- `scripts/run_study_pipeline.py`：按 study id 重建某个研究任务的 payload / pipeline
+
+## 适用版块
+
+- `r/dropship`
+- `r/dropshipping`
+- `r/ecommerce`
+- `r/shopify`
+- `r/woocommerce`
+
+## 推荐工作流
+
+1. 优先运行 `scripts/reddit_browser_pipeline.py`
+2. 自动抓取目标版块与关键词的帖子并写入 `data/raw/`
+3. 自动生成 Markdown 研究报告到 `docs/reports/`
+4. 人工阅读并筛选高意向帖子
+
+如果你后面补了 Reddit OAuth 凭证，也可以使用 `scripts/reddit_intel_pipeline.py`
+
+如果你已经有自己的抓取结果：
+
+1. 把数据保存到 `data/raw/`
+2. 用 `scripts/reddit_research_report.py` 生成研究报告
+3. 阅读 `docs/reports/*.md`，优先跟进高意向问题和高频痛点
+
+## 数据格式
+
+支持 `json`、`jsonl`、`csv`。
+
+建议字段：
+
+- `title`
+- `body`
+- `subreddit`
+- `author`
+- `url`
+- `created_utc`
+- `score`
+- `num_comments`
+- `search_term`
+
+## 运行示例
+
+```bash
+/usr/bin/python3 scripts/reddit_browser_pipeline.py
+```
+
+这个脚本会：
+
+- 调起本机 `Google Chrome`
+- 打开 Reddit 搜索页
+- 从已渲染页面中提取帖子链接、标题、正文片段、互动数
+- 保存原始 JSONL
+- 自动输出 Markdown 报告
+
+注意：
+
+- 需要你本机浏览器能正常访问 Reddit
+- 第一次运行时，macOS 可能会要求你授权“终端/应用控制 Chrome”
+- 如果 Chrome 打开的仍然是 `You've been blocked by network security`，那说明当前网络本身被 Reddit 风控拦截，脚本也无法强行绕过
+
+全量抓取建议使用容错模式：
+
+```bash
+/usr/bin/python3 scripts/reddit_browser_pipeline.py --continue-on-error
+```
+
+这个模式会：
+
+- 遇到单个搜索页失败时跳过继续
+- 每抓完一个页面就刷新 `data/raw/*.jsonl`
+- 同步更新 `docs/reports/*.md`
+
+API 版本命令：
+
+```bash
+/usr/bin/python3 scripts/reddit_intel_pipeline.py
+```
+
+如果公开 JSON 抓取被 Reddit 拦截，脚本会自动尝试读取环境变量里的 OAuth 凭证：
+
+- `REDDIT_CLIENT_ID`
+- `REDDIT_CLIENT_SECRET`
+- `REDDIT_USERNAME`（可选）
+- `REDDIT_PASSWORD`（可选）
+
+也可以指定输出路径：
+
+```bash
+/usr/bin/python3 scripts/reddit_intel_pipeline.py \
+  --raw-output data/raw/latest_reddit_posts.jsonl \
+  --report-output docs/reports/latest_reddit_report.md
+```
+
+只对已有原始数据生成报告：
+
+```bash
+/usr/bin/python3 scripts/reddit_research_report.py \
+  --input data/examples/reddit_posts_demo.jsonl \
+  --output docs/reports/demo-report.md
+```
+
+生成后的报告会包含：
+
+- 子版块分布
+- 高频需求标签
+- 高意向客户线索
+- 共性问题总结
+- 建议优先切入的话题
+
+## Demand Intelligence MVP
+
+如果你想把 Reddit 样本直接喂给“需求情报决策台”，先生成 payload：
+
+```bash
+/usr/bin/python3 scripts/build_demand_intelligence_payload.py \
+  --input /Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl \
+  --json-output docs/product/data/fishgoo-dashboard-payload.json \
+  --js-output docs/product/data/fishgoo-dashboard-payload.js
+```
+
+然后启动最小后端：
+
+```bash
+/usr/bin/python3 scripts/demand_intelligence_server.py --port 8765
+```
+
+打开：
+
+- `http://127.0.0.1:8765/`
+
+当前已提供的接口：
+
+- `/api/studies/fishgoo-us-dropshipping/dashboard`
+- `/api/studies/fishgoo-us-dropshipping/segments`
+- `/api/studies/fishgoo-us-dropshipping/segments/<segmentId>`
+- `/api/studies/fishgoo-us-dropshipping/packages`
+- `/api/studies/fishgoo-us-dropshipping/weekly-brief`
+- `/api/auth/me`
+- `/api/auth/login`
+- `/api/auth/logout`
+- `/api/jobs`
+- `/api/jobs/<jobId>`
+- `/api/jobs/<jobId>/retry`
+- `/api/jobs/<jobId>/cancel`
+- `/api/studies/<studyId>/jobs`
+- `/api/studies/<studyId>/schedule`
+- `/api/studies/<studyId>/operations`
+
+现在还支持 study 持久化：
+
+- `GET /api/studies`
+- `GET /api/study-template`
+- `POST /api/studies/draft`
+- `POST /api/studies`
+- `GET /api/studies/<studyId>/config`
+- `POST /api/studies/<studyId>/rebuild`
+- `POST /api/studies/<studyId>/schedule`
+
+study 会写到：
+
+- `data/studies/*.json`
+- `config/studies/*.json`
+- `docs/product/data/studies/*`
+
+这意味着你现在可以：
+
+1. 在前端 `Study Setup` 里新建研究任务
+2. 让服务把它保存成本地 study
+3. 在 study 列表里切换不同研究任务
+4. 查看每个 study 的任务历史、调度状态和数据来源映射
+5. 在 Dashboard / Weekly Brief 里查看趋势时间序列，而不只是静态快照
+
+## Demo 账号与权限
+
+本地 MVP 默认带 3 个演示账号，配置文件在：
+
+- `config/users.json`
+
+默认账号：
+
+- `admin@local / admin123`
+- `analyst@local / analyst123`
+- `viewer@local / viewer123`
+
+权限分层：
+
+- `viewer`：只能看 dashboard / studies / jobs
+- `analyst`：可以创建 study、生成 draft、手动 rebuild
+- `admin`：额外可以配置 schedule、触发 browser 模式重建
+
+前端在本地 HTTP 模式下会自动用 `admin demo` 登录，方便直接演示。
+
+## 任务队列与自动调度
+
+任务会落盘到：
+
+- `data/jobs/*.json`
+
+study 的调度配置会保存在：
+
+- `data/studies/*.json`
+
+典型流程：
+
+1. `POST /api/studies/<studyId>/rebuild` 把一次重建加入任务队列
+2. 后台 worker 自动处理 `queued -> running -> completed/failed`
+3. `POST /api/studies/<studyId>/schedule` 可以开启定时更新
+4. 调度线程会在到点后自动 enqueue 新任务
+5. 任务失败或需要复跑时，可以通过 `/api/jobs/<jobId>/retry` 重新入队
+6. 排队中的任务可以通过 `/api/jobs/<jobId>/cancel` 取消
+
+## Operations 视图
+
+前端现在还多了一个 `Operations` 视图，用来做这些事情：
+
+- 看全局任务统计
+- 看每个 study 的调度状态
+- 直接触发 `seeded / browser` 模式运行
+- 暂停/启用某个 study 的自动调度
+- 查看任务详情、重跑任务、取消排队中的任务
+
+## 趋势时间序列
+
+Dashboard 和 Weekly Brief 现在都支持 `trendSeries` 视图，用来回答：
+
+- 最近 6 个窗口里，哪个主题在升温
+- 哪个主题虽然整体机会高，但最近窗口在回落
+- 第二主产品是不是正在接近主产品
+- 近 7 天、近 30 天和全量样本下，判断会不会发生变化
+
+前端交互：
+
+- 点击时间窗口 chip：切换 `近7天 / 近30天 / 近90天 / 全量样本`
+- 点击图例：聚焦某一条机会线，其他线会降权显示
+- 鼠标悬停折线点：查看该窗口的具体值
+- 图上橙色异常标记：表示该窗口出现异常上冲或异常回落
+- 图例和下方卡片里的“较上一周期...”说明：用于周会里直接解释变化方向，而不需要人工再口头翻译
+
+当前规则：
+
+- 如果原始数据里有足够多可解析的 `created_utc`，系统会按时间窗口聚合
+- 如果时间戳不稳定，系统会退化成按样本顺序窗口近似趋势
+
+这个视图的目的不是替代机会分，而是补充“变化方向”。
+
+手动测试立即排队一轮：
+
+```bash
+/usr/bin/curl -s -X POST http://127.0.0.1:8765/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@local","password":"admin123"}' \
+  -c /tmp/demand-intel.cookie
+
+/usr/bin/curl -s -b /tmp/demand-intel.cookie \
+  -X POST http://127.0.0.1:8765/api/studies/fishgoo-us-dropshipping/schedule \
+  -H 'Content-Type: application/json' \
+  -d '{"enabled":true,"mode":"seeded","interval_hours":24,"start_now":true}'
+```
+
+如果你想按 study id 重建一次：
+
+```bash
+/usr/bin/python3 scripts/run_study_pipeline.py --study-id fishgoo-us-dropshipping
+```
+
+如果你想让某个 study 走浏览器抓取再重建：
+
+```bash
+/usr/bin/python3 scripts/run_study_pipeline.py \
+  --study-id fishgoo-us-dropshipping \
+  --mode browser \
+  --continue-on-error
+```

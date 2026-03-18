@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demand Intelligence Dashboard</title>
+  <link rel="stylesheet" href="./prototype.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">D</div>
+        <div>
+          <div class="title">Dashboard</div>
+          <div class="subtitle">每天打开 3 分钟，先看变化、客群和动作</div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="pill">研究主题：美国 dropshipping / 履约与 supplier</div>
+        <div class="pill">数据范围：近 30 天</div>
+        <div class="pill">上次更新：今天 09:20</div>
+        <div class="pill">Confidence：High</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="./prototype-index.html">原型入口</a>
+      <a class="active" href="./prototype-dashboard.html">Dashboard</a>
+      <a href="./prototype-segment-explorer.html">Segment Explorer</a>
+      <a href="./prototype-packaging-studio.html">Packaging Studio</a>
+      <a href="./prototype-weekly-brief.html">Weekly Brief</a>
+    </nav>
+
+    <section class="hero">
+      <div class="card hero-main">
+        <p class="eyebrow">本周最重要的判断</p>
+        <h1>优先打“已出单但履约混乱”的卖家，主推 `Fulfillment Audit`。</h1>
+        <p class="copy">
+          最近 14 天里，和 shipping delays、3PL confusion、supplier handoff 相关的高意向表达明显上升。这类问题更具体、离付费更近，也更适合被包装成审查型产品。
+        </p>
+
+        <div class="metric-row">
+          <div class="metric">
+            <strong>86</strong>
+            <span>Opportunity Score<br>市场值得优先打</span>
+          </div>
+          <div class="metric">
+            <strong>82</strong>
+            <span>Packaging Readiness<br>很适合做清晰 offer</span>
+          </div>
+          <div class="metric">
+            <strong>+38%</strong>
+            <span>趋势动量<br>近 14 天升温</span>
+          </div>
+          <div class="metric">
+            <strong>Test Now</strong>
+            <span>Action Mode<br>本周适合直接测试</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-stack">
+        <div class="card side-card">
+          <div class="label">今日变化</div>
+          <div class="stack">
+            <div class="item">
+              <strong>履约类需求升温</strong>
+              “need a 3PL” 和 “shipping delays” 相关表达显著上升
+            </div>
+            <div class="item">
+              <strong>supplier 需求依然强</strong>
+              但包装成熟度低于 Fulfillment 主题
+            </div>
+            <div class="item">
+              <strong>成本优化仍偏次级</strong>
+              有讨论，但离立即成交还偏远
+            </div>
+          </div>
+        </div>
+
+        <div class="card side-card">
+          <div class="label orange">今天建议动作</div>
+          <div class="stack">
+            <div class="item"><strong>主推产品</strong>`3PL & Fulfillment Audit`</div>
+            <div class="item"><strong>主攻客群</strong>运营期 / 替换中 / 履约与发货</div>
+            <div class="item"><strong>测试话术</strong>先找出退款和延迟背后的真正瓶颈</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label">高价值客群榜</div>
+            <h2>谁最值得优先打</h2>
+          </div>
+          <p>卡片里只保留业务负责人真正需要的字段：机会、包装、核心痛点、建议动作。</p>
+        </div>
+        <div class="stack">
+          <div class="item">
+            <strong>运营期 / 替换中 / 履约与发货</strong>
+            <div class="small">核心痛点：发货慢、退款增加、3PL 不清楚</div>
+            <div class="kpi-line">
+              <span class="mini-pill">Opportunity 86</span>
+              <span class="mini-pill">Packaging 82</span>
+              <span class="mini-pill up">趋势上升</span>
+              <span class="mini-pill">推荐产品：Fulfillment Audit</span>
+            </div>
+          </div>
+          <div class="item">
+            <strong>扩张期 / 求解中 / 供应商与采购</strong>
+            <div class="small">核心痛点：private supplier 需求强，但路径不清晰</div>
+            <div class="kpi-line">
+              <span class="mini-pill">Opportunity 74</span>
+              <span class="mini-pill">Packaging 67</span>
+              <span class="mini-pill up">持续升温</span>
+              <span class="mini-pill">推荐产品：Supplier Match</span>
+            </div>
+          </div>
+          <div class="item">
+            <strong>运营期 / 认知中 / 质量与风险</strong>
+            <div class="small">核心痛点：QC 不稳、fake supplier 风险</div>
+            <div class="kpi-line">
+              <span class="mini-pill">Opportunity 59</span>
+              <span class="mini-pill">Packaging 55</span>
+              <span class="mini-pill warn">继续观察</span>
+              <span class="mini-pill">推荐产品：Risk Check</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label">本周动作</div>
+            <h2>本周应该做什么</h2>
+          </div>
+          <p>首页必须把分析直接翻译成动作，否则负责人不会每天打开。</p>
+        </div>
+        <div class="stack">
+          <div class="item"><strong>优先客群</strong>已出单、最近正被发货问题拖累的 dropshipping 卖家</div>
+          <div class="item"><strong>主推产品</strong>3PL & Fulfillment Audit</div>
+          <div class="item"><strong>重点验证</strong>“先找出 bottleneck 再决定是否换 3PL”的话术是否更容易触发咨询</div>
+          <div class="item"><strong>暂缓投入</strong>泛 sourcing、泛 cost-down 话题</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid equal">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label">客群 x 痛点热力图</div>
+            <h2>哪个客群最痛在哪里</h2>
+          </div>
+          <p>热度不是帖子数，而是痛感、提及频次和趋势动量的加权结果。</p>
+        </div>
+        <div class="heatmap">
+          <div class="heat-head"></div>
+          <div class="heat-head">供应商与采购</div>
+          <div class="heat-head">履约与发货</div>
+          <div class="heat-head">质量与风险</div>
+          <div class="heat-head">成本与利润</div>
+
+          <div class="heat-label">运营期 / 替换中</div>
+          <div class="heat-cell mid"><strong>72</strong><span>supplier 不稳</span></div>
+          <div class="heat-cell high"><strong>91</strong><span>发货慢 / 3PL 混乱</span></div>
+          <div class="heat-cell mid"><strong>58</strong><span>QC 连带问题</span></div>
+          <div class="heat-cell low"><strong>36</strong><span>成本不是第一痛点</span></div>
+
+          <div class="heat-label">扩张期 / 求解中</div>
+          <div class="heat-cell high"><strong>84</strong><span>private supplier 需求强</span></div>
+          <div class="heat-cell mid"><strong>63</strong><span>履约结构开始复杂</span></div>
+          <div class="heat-cell low"><strong>42</strong><span>风险次级</span></div>
+          <div class="heat-cell low"><strong>33</strong><span>利润议题偏次级</span></div>
+
+          <div class="heat-label">验证期 / 比较中</div>
+          <div class="heat-cell mid"><strong>51</strong><span>在看 supplier</span></div>
+          <div class="heat-cell low"><strong>40</strong><span>履约痛感未完全形成</span></div>
+          <div class="heat-cell low"><strong>28</strong><span>风险认知不足</span></div>
+          <div class="heat-cell mid"><strong>49</strong><span>对成本敏感</span></div>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label orange">证据摘要墙</div>
+            <h2>为什么可以相信这个判断</h2>
+          </div>
+          <p>首页只展示代表性证据，原始帖子进入二级层，不喧宾夺主。</p>
+        </div>
+        <div class="stack">
+          <div class="quote">
+            <strong>“Looking for a 3PL fulfillment service”</strong>
+            <div class="evidence-meta">来自 `r/dropshipping`，归类为 `扩张期 / 求解中 / 履约与发货`</div>
+          </div>
+          <div class="quote">
+            <strong>“Shipping delays are killing conversions”</strong>
+            <div class="evidence-meta">来自 `r/ecommerce`，归类为 `运营期 / 替换中 / 履约与发货`</div>
+          </div>
+          <div class="quote">
+            <strong>“Need a reliable private supplier in China”</strong>
+            <div class="evidence-meta">来自 `r/dropship`，归类为 `扩张期 / 求解中 / 供应商与采购`</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

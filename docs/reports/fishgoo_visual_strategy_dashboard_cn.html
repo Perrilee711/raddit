@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fishgoo 机会策略仪表盘</title>
+  <style>
+    :root {
+      --bg: #f4efe8;
+      --panel: #fffaf3;
+      --ink: #1f2a2c;
+      --muted: #667172;
+      --line: #ddd1c0;
+      --accent: #d26b2c;
+      --shadow: 0 16px 40px rgba(34, 33, 28, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(210,107,44,0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(37,113,121,0.14), transparent 24%),
+        linear-gradient(180deg, #f8f3ec 0%, var(--bg) 100%);
+    }
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+    .hero-card, .summary-card, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+    .hero-card {
+      padding: 28px;
+    }
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 10px 0 12px;
+      font-size: 42px;
+      line-height: 1.05;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .summary-card {
+      padding: 24px;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .summary-card strong {
+      display: block;
+      font-size: 22px;
+      margin-top: 6px;
+    }
+    .summary-meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin: 0 0 28px;
+    }
+    .kpi-card {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .kpi-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    .kpi-value {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .panel {
+      padding: 24px;
+      overflow: hidden;
+    }
+    .panel h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+    }
+    .panel p.note {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 210px 1fr 48px;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 0;
+    }
+    .bar-label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .bar-track {
+      height: 16px;
+      border-radius: 999px;
+      background: #efe4d7;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+    }
+    .bar-value {
+      text-align: right;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 10px;
+      text-align: left;
+    }
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .opportunity-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .opportunity-card {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+    }
+    .opportunity-title {
+      font-weight: 800;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .opportunity-metrics {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .opportunity-offer {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .opportunity-meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .mini-axis {
+      position: relative;
+      height: 130px;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px) 0 0 / 25% 100%,
+        linear-gradient(to top, rgba(0,0,0,0.03) 1px, transparent 1px) 0 0 / 100% 25%;
+    }
+    .mini-dot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      transform: translate(-50%, 50%);
+      box-shadow: 0 0 0 5px rgba(0,0,0,0.05);
+    }
+    .wall-section {
+      margin-top: 28px;
+    }
+    .section-heading {
+      font-size: 22px;
+      font-weight: 800;
+      padding-left: 14px;
+      margin-bottom: 14px;
+    }
+    .post-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .post-card {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .post-card h4 {
+      margin: 10px 0;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    .post-card p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 68px;
+    }
+    .post-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .post-card a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .footer-note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    @media (max-width: 980px) {
+      .hero, .layout {
+        grid-template-columns: 1fr;
+      }
+      .kpi-grid, .post-grid, .opportunity-grid {
+        grid-template-columns: 1fr;
+      }
+      .bar-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Fishgoo Strategy Dashboard</div>
+        <h1>基于 Reddit 的 Dropshipping 客户痛点仪表盘</h1>
+        <p>这份仪表盘把 Reddit 上抓取到的需求，转换成 Fishgoo 可执行的战略视图。它会告诉你：哪类痛点最强、集中在哪类客群阶段、以及未来 90 天最值得先卖什么前置产品。</p>
+      </div>
+      <div class="summary-card">
+        <div>
+          <div class="eyebrow">当前判断</div>
+          <strong>3PL / Fulfillment / Shipping</strong>
+        </div>
+        <div class="summary-meta">
+          生成时间: 2026-03-17 06:53 UTC<br>
+          数据输入: /Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl<br>
+          聚焦版块: dropship, dropshipping<br>
+          样本量: 564
+        </div>
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">总帖子数</div><div class="kpi-value">564</div></div><div class="kpi-card"><div class="kpi-label">高紧急度帖子</div><div class="kpi-value">45</div></div><div class="kpi-card"><div class="kpi-label">最大痛点类别</div><div class="kpi-value">3PL / Fulfillment / Shipping</div></div><div class="kpi-card"><div class="kpi-label">优先机会</div><div class="kpi-value">3PL / Fulfillment / Shipping</div></div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <h2>痛点分布</h2>
+        <p class="note">Fishgoo 相关痛点里，哪类问题在 Reddit 上出现得最多。</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">3PL / Fulfillment / Shipping</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:100.0%; background:#d26b2c;"></div>
+              </div>
+              <div class="bar-value">170</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">Supplier / Sourcing</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:67.6%; background:#257179;"></div>
+              </div>
+              <div class="bar-value">115</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">Cost / Margin / Packaging</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:14.7%; background:#5b7d3b;"></div>
+              </div>
+              <div class="bar-value">25</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">Risk / QC / Scam Avoidance</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:9.4%; background:#8c5e2a;"></div>
+              </div>
+              <div class="bar-value">16</div>
+            </div>
+            
+        <div class="bar-row">
+          <div class="bar-label">其他 / 未归类</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:140.0%; background:#b8a897;"></div>
+          </div>
+          <div class="bar-value">238</div>
+        </div>
+        
+      </div>
+      <div class="panel">
+        <h2>机会卡片</h2>
+        <p class="note">把 Fishgoo 适配度、市场证据和适合的前置 offer 放在一个决策视图里。</p>
+        <div class="opportunity-grid">
+          
+            <div class="opportunity-card" style="border-top:4px solid #d26b2c;">
+              <div class="opportunity-title">3PL / Fulfillment / Shipping</div>
+              <div class="opportunity-metrics">
+                <span>优先级 8.4</span>
+                <span>适配度 10.0</span>
+                <span>市场证据 7.7</span>
+              </div>
+              <div class="opportunity-offer">3PL &amp; Fulfillment Audit</div>
+              <div class="opportunity-meta">帖子量 170 | 紧急度 4.3 | 变现 9.0</div>
+              <div class="mini-axis">
+                <div class="mini-dot" style="left:100.0%; bottom:77.0%; background:#d26b2c;"></div>
+              </div>
+            </div>
+            
+            <div class="opportunity-card" style="border-top:4px solid #257179;">
+              <div class="opportunity-title">Supplier / Sourcing</div>
+              <div class="opportunity-metrics">
+                <span>优先级 6.8</span>
+                <span>适配度 9.0</span>
+                <span>市场证据 5.7</span>
+              </div>
+              <div class="opportunity-offer">Supplier Match Sprint</div>
+              <div class="opportunity-meta">帖子量 115 | 紧急度 4.1 | 变现 8.0</div>
+              <div class="mini-axis">
+                <div class="mini-dot" style="left:90.0%; bottom:57.0%; background:#257179;"></div>
+              </div>
+            </div>
+            
+            <div class="opportunity-card" style="border-top:4px solid #5b7d3b;">
+              <div class="opportunity-title">Cost / Margin / Packaging</div>
+              <div class="opportunity-metrics">
+                <span>优先级 4.0</span>
+                <span>适配度 7.0</span>
+                <span>市场证据 1.9</span>
+              </div>
+              <div class="opportunity-offer">Cost-Down Review</div>
+              <div class="opportunity-meta">帖子量 25 | 紧急度 2.6 | 变现 7.0</div>
+              <div class="mini-axis">
+                <div class="mini-dot" style="left:70.0%; bottom:19.0%; background:#5b7d3b;"></div>
+              </div>
+            </div>
+            
+            <div class="opportunity-card" style="border-top:4px solid #8c5e2a;">
+              <div class="opportunity-title">Risk / QC / Scam Avoidance</div>
+              <div class="opportunity-metrics">
+                <span>优先级 3.8</span>
+                <span>适配度 8.0</span>
+                <span>市场证据 1.5</span>
+              </div>
+              <div class="opportunity-offer">China Buying Risk Check</div>
+              <div class="opportunity-meta">帖子量 16 | 紧急度 2.3 | 变现 6.0</div>
+              <div class="mini-axis">
+                <div class="mini-dot" style="left:80.0%; bottom:15.0%; background:#8c5e2a;"></div>
+              </div>
+            </div>
+            
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>痛点 × 客群阶段矩阵</h2>
+      <p class="note">这个表帮助你判断：不同阶段的 dropshipping 卖家，最集中抱怨的到底是什么。</p>
+      <table><thead><tr><th>客群阶段</th><th>Supplier / Sourcing</th><th>3PL / Fulfillment / Shipping</th><th>Risk / QC / Scam Avoidance</th><th>Cost / Margin / Packaging</th></tr></thead><tbody><tr><th>新手 / 起盘阶段</th><td>3</td><td>8</td><td>1</td><td>2</td></tr><tr><th>换 Supplier / 换 3PL</th><td>18</td><td>23</td><td>0</td><td>0</td></tr><tr><th>履约 / 发货救火阶段</th><td>23</td><td>137</td><td>6</td><td>1</td></tr><tr><th>利润 / 成本压力阶段</th><td>2</td><td>0</td><td>0</td><td>22</td></tr><tr><th>泛运营人群</th><td>69</td><td>2</td><td>9</td><td>0</td></tr></tbody></table>
+    </section>
+
+    <section class="wall-section">
+      <div class="section-heading">高意向帖子卡片墙</div>
+      
+            <section class="wall-section">
+              <div class="section-heading" style="border-left:5px solid #257179;">Supplier / Sourcing</div>
+              <div class="post-grid">
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropshipping</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 110</span>
+                  </div>
+                  <h4>Looking for a private dropshipping supplier – Beauty / Health / Home / Garden [Europe]</h4>
+                  <p>· 69 votes·41 comments</p>
+                  <a href="https://www.reddit.com/r/dropshipping/comments/1rlf3ku/looking_for_a_private_dropshipping_supplier/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 66</span>
+                  </div>
+                  <h4>Looking for a reliable sourcing agent in China</h4>
+                  <p>· 14 votes·52 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1qjoxma/looking_for_a_reliable_sourcing_agent_in_china/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropshipping</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 56</span>
+                  </div>
+                  <h4>Looking For Reliable and Fast Private Agent in China</h4>
+                  <p>· 寻找可靠且快速的中国私人代理人 11 votes·45 comments</p>
+                  <a href="https://www.reddit.com/r/dropshipping/comments/1rfy0nv/looking_for_reliable_and_fast_private_agent_in/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 43</span>
+                  </div>
+                  <h4>Looking For Chinese Suppliers / Private Agents</h4>
+                  <p>· 寻找中国供应商/私人代理 10 votes·33 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1h2tdar/looking_for_chinese_suppliers_private_agents/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 34</span>
+                  </div>
+                  <h4>Looking for a pet products supplier</h4>
+                  <p>· 正在寻找宠物用品供应商 10 votes·24 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1ppmfk3/looking_for_a_pet_products_supplier/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                </div>
+            </section>
+            
+            <section class="wall-section">
+              <div class="section-heading" style="border-left:5px solid #d26b2c;">3PL / Fulfillment / Shipping</div>
+              <div class="post-grid">
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 41</span>
+                  </div>
+                  <h4>Looking for a 3PL fulfillment service</h4>
+                  <p>· 正在寻找一家 3PL 履约服务 8 votes·33 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1rgxfix/looking_for_a_3pl_fulfillment_service/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 25</span>
+                  </div>
+                  <h4>Looking for a reliable fulfillment agent for anodized aluminum products with thank you cards</h4>
+                  <p>· 寻找可靠的阳极氧化铝产品履约代理，附上感谢卡 17 votes·8 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1l6xiex/looking_for_a_reliable_fulfillment_agent_for/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 22</span>
+                  </div>
+                  <h4>Looking for a proper Fulfillment center to SELL on AliExpress</h4>
+                  <p>· 8 votes·14 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1m08a1w/looking_for_a_proper_fulfillment_center_to_sell/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 21</span>
+                  </div>
+                  <h4>Low Order Volume 3PL Services</h4>
+                  <p>· 低阶卷 3PL 服务 7 votes·14 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1m4tkix/low_order_volume_3pl_services/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 10.0</span>
+                    <span>Engagement 20</span>
+                  </div>
+                  <h4>Dropshipping vs Holding Inventory – Need Advice</h4>
+                  <p>· 9 votes·11 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1n9v5wk/dropshipping_vs_holding_inventory_need_advice/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                </div>
+            </section>
+            
+            <section class="wall-section">
+              <div class="section-heading" style="border-left:5px solid #8c5e2a;">Risk / QC / Scam Avoidance</div>
+              <div class="post-grid">
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 6.0</span>
+                    <span>Engagement 61</span>
+                  </div>
+                  <h4>Aliexpress = Trash quality?</h4>
+                  <p>· 速卖通=垃圾质量？ 16 votes·45 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/176gc69/aliexpress_trash_quality/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 4.1</span>
+                    <span>Engagement 21</span>
+                  </div>
+                  <h4>Finding quality items for my store</h4>
+                  <p>· 5 votes·16 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1r0gd91/finding_quality_items_for_my_store/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 4.0</span>
+                    <span>Engagement 55</span>
+                  </div>
+                  <h4>Help! Product selling too much. Is this a scam??</h4>
+                  <p>· 帮助！产品销售过多。这是骗局吗？？ 27 votes·28 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1lykj35/help_product_selling_too_much_is_this_a_scam/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropshipping</span>
+                    <span>紧急度 4.0</span>
+                    <span>Engagement 49</span>
+                  </div>
+                  <h4>dsers scammed me for 12k uds</h4>
+                  <p>· 18 votes·31 comments</p>
+                  <a href="https://www.reddit.com/r/dropshipping/comments/1rmgua9/dsers_scammed_me_for_12k_uds/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 3.1</span>
+                    <span>Engagement 31</span>
+                  </div>
+                  <h4>AUTODS. Scammers, Money hungry, THIEVES , Need a lawsuit.</h4>
+                  <p>· 8 votes·23 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1rr0edh/autods_scammers_money_hungry_thieves_need_a/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                </div>
+            </section>
+            
+            <section class="wall-section">
+              <div class="section-heading" style="border-left:5px solid #5b7d3b;">Cost / Margin / Packaging</div>
+              <div class="post-grid">
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 6.7</span>
+                    <span>Engagement 7</span>
+                  </div>
+                  <h4>Looking for Friendly Advice on Tump Tariff Headaches</h4>
+                  <p>· 寻求关于 tump 关税难题的友好建议 0 votes·7 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1jxh9io/looking_for_friendly_advice_on_tump_tariff/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropshipping</span>
+                    <span>紧急度 4.0</span>
+                    <span>Engagement 73</span>
+                  </div>
+                  <h4>1K orders, 46K sales,... but 10K profit :)</h4>
+                  <p>· 41 votes·32 comments</p>
+                  <a href="https://www.reddit.com/r/dropshipping/comments/1ru3vos/1k_orders_46k_sales_but_10k_profit/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 4.0</span>
+                    <span>Engagement 45</span>
+                  </div>
+                  <h4>It feels weird that I am finally profitable and now I don&#x27;t know what to do?</h4>
+                  <p>· 感觉很奇怪，我终于赚钱了，却不知道该怎么办？ 35 votes·10 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/q9bhe6/it_feels_weird_that_i_am_finally_profitable_and/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 4.0</span>
+                    <span>Engagement 41</span>
+                  </div>
+                  <h4>Anyone here that’s actually profitable nowadays?</h4>
+                  <p>· 这里有人现在真的赚钱吗？ 18 votes·23 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1rf190u/anyone_here_thats_actually_profitable_nowadays/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                
+                <article class="post-card">
+                  <div class="post-meta">
+                    <span>dropship</span>
+                    <span>紧急度 3.8</span>
+                    <span>Engagement 18</span>
+                  </div>
+                  <h4>How are you calculating landed costs with all these new tariff regulations?</h4>
+                  <p>· 5 votes·13 comments</p>
+                  <a href="https://www.reddit.com/r/dropship/comments/1mupjis/how_are_you_calculating_landed_costs_with_all/" target="_blank" rel="noreferrer">打开帖子</a>
+                </article>
+                </div>
+            </section>
+            
+    </section>
+
+    <section class="footer-note">
+      建议用法：先看机会卡片，决定未来 90 天主打哪个机会；再看矩阵，确认优先服务哪类客群；最后把帖子墙里的真实用户原话，转成产品页文案、销售话术和 Reddit 回复模板。
+    </section>
+  </div>
+</body>
+</html>
