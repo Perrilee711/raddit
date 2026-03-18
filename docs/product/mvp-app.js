@@ -7,9 +7,9 @@ const fallbackData = {
     confidence: "High",
   },
   summary: {
-    headline: "优先打“已出单但履约混乱”的卖家，主推 `Fulfillment Audit`。",
+    headline: "围绕“已出单但履约混乱”的卖家建立第一增长抓手，优先推出 3PL & Fulfillment Audit。",
     explanation:
-      "最近 14 天里，和 shipping delays、3PL confusion、supplier handoff 相关的高意向表达明显上升。这类问题更具体、离付费更近，也更适合被包装成审查型产品。",
+      "过去 14 天，围绕 shipping delays、3PL confusion 与 supplier handoff 的高意向表达持续抬升。对业务负责人而言，这类需求既接近真实预算，又足够具体，适合被包装成可快速成交的审查型产品。",
     metrics: [
       { value: "86", label: "Opportunity Score", note: "市场值得优先打" },
       { value: "82", label: "Packaging Readiness", note: "很适合做清晰 offer" },
@@ -19,23 +19,23 @@ const fallbackData = {
   },
   todayChanged: [
     {
-      title: "履约类需求升温",
-      body: "“need a 3PL” 和 “shipping delays” 相关表达显著上升，已经从抱怨开始转向求推荐。",
+      title: "履约类需求进入决策窗口",
+      body: "“need a 3PL” 与 “shipping delays” 相关表达显著增加，用户语言已经从抱怨转向明确求解。",
     },
     {
-      title: "supplier 需求依然强",
-      body: "private supplier 仍然是稳定高位主题，但包装成熟度仍然低于 Fulfillment 主题。",
+      title: "Supplier 主题保持高位",
+      body: "private supplier 依然是稳定高频主题，但当前的包装成熟度仍低于 Fulfillment 主线。",
     },
     {
-      title: "成本优化仍偏次级",
-      body: "cost-down 需求存在，但问题定义不够锋利，当前不适合做第一主打。",
+      title: "降本议题暂不宜前置",
+      body: "cost-down 需求存在，但问题定义不够锋利，当前不适合作为首页主打产品切入口。",
     },
   ],
   weeklyActions: [
-    { title: "主推产品", body: "统一推 `3PL & Fulfillment Audit`" },
-    { title: "主攻客群", body: "运营期 / 替换中 / 履约与发货" },
-    { title: "测试话术", body: "先找出退款和延迟背后的真正 bottleneck" },
-    { title: "暂缓投入", body: "泛 sourcing、泛 cost-down 主题" },
+    { title: "本周主推产品", body: "统一对外测试 `3PL & Fulfillment Audit`" },
+    { title: "本周核心客群", body: "运营期 / 替换中 / 履约与发货" },
+    { title: "本周价值主张", body: "先找出退款和延迟背后的真正 bottleneck" },
+    { title: "本周暂缓方向", body: "泛 sourcing、泛 cost-down 主题" },
   ],
   segments: [
     {
@@ -401,7 +401,7 @@ function renderAuthPanel() {
   const panel = document.getElementById("auth-panel");
   if (!panel) return;
   if (!apiAvailable) {
-    panel.innerHTML = `<div class="auth-card">Production Demo · 静态快照版</div>`;
+    panel.innerHTML = `<div class="auth-card">Executive Demo · 静态快照版</div>`;
     return;
   }
   if (!authUser) {
@@ -426,8 +426,8 @@ function renderStudyRail() {
       rail.innerHTML = `
         <div class="card section-card">
           <div class="label orange">公开演示版</div>
-          <h2>当前展示的是一份可直接给管理层查看的线上快照</h2>
-          <p class="copy">这版聚焦 Dashboard、Segment Explorer、Packaging Studio 和 Weekly Brief，不暴露本地任务队列、Study 配置和内部 API 才能使用的操作入口。</p>
+          <h2>当前展示的是一份面向管理层与业务负责人的产品化快照</h2>
+          <p class="copy">这版聚焦市场判断、客群优先级、产品包装与证据摘要，保留决策价值，隐藏仅供内部使用的任务队列与配置入口。</p>
         </div>
       `;
       return;
@@ -818,7 +818,7 @@ function renderDashboard() {
   document.getElementById("view-dashboard").innerHTML = `
     <section class="hero">
       <div class="card hero-main">
-        <p class="eyebrow">本周最重要的判断</p>
+        <p class="eyebrow">Executive Market Briefing</p>
         <h1>${appData.summary.headline}</h1>
         <p class="copy">${appData.summary.explanation}</p>
         <div class="metric-row">
@@ -842,9 +842,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label">高价值客群榜</div>
-            <h2>谁最值得优先打</h2>
+            <h2>当前最值得优先投入的客群</h2>
           </div>
-          <p>首页只保留业务负责人真正要看的：客群、痛点、机会分、包装分和建议产品。</p>
+          <p>用最少的信息回答最关键的管理问题：优先服务谁、为什么现在打、应该用什么产品切入。</p>
         </div>
         <div class="stack">${appData.segments.map(segmentCardMarkup).join("")}</div>
       </div>
@@ -852,9 +852,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label orange">推荐产品包装</div>
-            <h2>现在应该怎么卖</h2>
+            <h2>现在应该如何对外销售</h2>
           </div>
-          <p>不是展示一堆功能，而是直接给出主产品和次产品建议。</p>
+          <p>不是罗列能力，而是直接给出主产品、次产品与最适合当前阶段的价值主张。</p>
         </div>
         <div class="package-grid">${appData.packages.map(packageMarkup).join("")}</div>
       </div>
@@ -865,9 +865,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label">趋势时间序列</div>
-            <h2>最近到底在变强还是变弱</h2>
+            <h2>关键需求正在变强还是回落</h2>
           </div>
-          <p>让负责人看到变化方向，而不是只看到静态强弱。</p>
+          <p>让团队看到趋势方向，而不只是静态强弱，从而判断窗口期和优先级变化。</p>
         </div>
         ${trendSeriesMarkup()}
       </div>
@@ -875,9 +875,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label orange">证据摘要墙</div>
-            <h2>为什么可以相信这个判断</h2>
+            <h2>这些判断背后的市场证据</h2>
           </div>
-          <p>原始帖子不做首页主角，但所有结论都要能追溯到代表性证据。</p>
+          <p>首页不展示原始帖子流，但每一个核心判断都必须能回到代表性用户原话与来源。</p>
         </div>
         <div class="stack">${appData.evidence.slice(0, 3).map(evidenceMarkup).join("")}</div>
       </div>
@@ -888,9 +888,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label">客群 x 痛点热力图</div>
-            <h2>哪个客群最痛在哪里</h2>
+            <h2>不同客群最痛的问题分布</h2>
           </div>
-          <p>热度不是帖子数，而是痛感、密度和趋势动量的组合。</p>
+          <p>这里的热度不是帖子数，而是痛感强度、需求密度与趋势动量的综合结果。</p>
         </div>
         ${heatmapMarkup()}
       </div>
@@ -901,9 +901,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label">任务队列与调度</div>
-            <h2>这个 study 怎么持续更新</h2>
+            <h2>这条研究管线如何持续更新</h2>
           </div>
-          <p>让负责人知道现在是静态结论，还是会自动刷新的一条业务情报管线。</p>
+          <p>让团队理解当前看到的是一次静态快照，还是一条能够持续刷新的需求情报管线。</p>
         </div>
         <div class="ops-list">
           <div class="ops-stat">
@@ -928,9 +928,9 @@ function renderDashboard() {
         <div class="section-head">
           <div>
             <div class="label orange">数据映射与来源</div>
-            <h2>为什么系统会得出这个判断</h2>
+            <h2>系统如何得出这些结论</h2>
           </div>
-          <p>把来源分布、关键词驱动和机会驱动显式展示出来，避免结论像黑箱。</p>
+          <p>把来源分布、关键词驱动与机会驱动显式展示出来，降低“黑箱感”，提高团队信任度。</p>
         </div>
         <div class="mini-list">${sourceBreakdown || `<div class="mini-row"><strong>暂无来源分布</strong></div>`}</div>
         <div class="item">
