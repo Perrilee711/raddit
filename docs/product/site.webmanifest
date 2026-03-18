@@ -1,0 +1,17 @@
+{
+  "name": "Demand Intelligence Dashboard",
+  "short_name": "DemandIntel",
+  "description": "面向业务线负责人的需求情报决策台，帮助团队从公开市场信号中判断高价值客群、产品包装与趋势变化。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12314b",
+  "theme_color": "#12314b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
