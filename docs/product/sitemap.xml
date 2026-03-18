@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://skill-deploy-jqc141eqpd-codex-agent-deploys.vercel.app/</loc>
+    <loc>https://skill-deploy-jr9bh4v87v.vercel.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://skill-deploy-jqc141eqpd-codex-agent-deploys.vercel.app/mvp-app.html</loc>
+    <loc>https://skill-deploy-jr9bh4v87v.vercel.app/mvp-app.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
