@@ -279,6 +279,7 @@ let selectedOperationsStudyId = "all";
 let selectedJobId = null;
 let selectedTrendViewKey = null;
 let selectedTrendSeriesId = "all";
+let apiAvailable = false;
 
 const views = [
   { id: "dashboard", label: "Dashboard" },
@@ -291,6 +292,11 @@ const views = [
 
 function isHttpMode() {
   return window.location.protocol.startsWith("http");
+}
+
+function getVisibleViews() {
+  if (apiAvailable) return views;
+  return views.filter((view) => !["operations", "setup"].includes(view.id));
 }
 
 function formatDateTime(value, empty = "未运行") {
@@ -375,6 +381,7 @@ async function apiFetchJson(url, options = {}) {
   if (!response.ok) {
     throw new Error(`API failed: ${response.status}`);
   }
+  apiAvailable = true;
   return response.json();
 }
 
@@ -393,6 +400,10 @@ function renderMeta() {
 function renderAuthPanel() {
   const panel = document.getElementById("auth-panel");
   if (!panel) return;
+  if (!apiAvailable) {
+    panel.innerHTML = `<div class="auth-card">Production Demo · 静态快照版</div>`;
+    return;
+  }
   if (!authUser) {
     panel.innerHTML = `<div class="auth-card">未登录</div>`;
     return;
@@ -411,6 +422,16 @@ function renderStudyRail() {
   if (!rail) return;
 
   if (!studyList.length) {
+    if (!apiAvailable) {
+      rail.innerHTML = `
+        <div class="card section-card">
+          <div class="label orange">公开演示版</div>
+          <h2>当前展示的是一份可直接给管理层查看的线上快照</h2>
+          <p class="copy">这版聚焦 Dashboard、Segment Explorer、Packaging Studio 和 Weekly Brief，不暴露本地任务队列、Study 配置和内部 API 才能使用的操作入口。</p>
+        </div>
+      `;
+      return;
+    }
     rail.innerHTML = `
       <div class="card section-card">
         <div class="label">研究任务</div>
@@ -445,15 +466,29 @@ function renderFilterChips() {
   const marketChip = document.getElementById("market-chip");
   const rangeChip = document.getElementById("range-chip");
   const confidenceChip = document.getElementById("confidence-chip");
+  const refreshButton = document.getElementById("refresh-study-button");
+  const refreshModeSelect = document.getElementById("refresh-mode-select");
+  const refreshModeWrapper = refreshModeSelect?.closest(".inline-select");
 
   if (marketChip) marketChip.textContent = `市场：${appData.study.market}`;
   if (rangeChip) rangeChip.textContent = `周期：${appData.study.dateRange}`;
   if (confidenceChip) confidenceChip.textContent = `Confidence：${appData.study.confidence}`;
+  if (refreshModeWrapper) {
+    refreshModeWrapper.style.display = apiAvailable ? "" : "none";
+  }
+  if (refreshButton) {
+    refreshButton.disabled = !apiAvailable;
+    refreshButton.textContent = apiAvailable ? "刷新当前 Study" : "静态演示版";
+  }
+  if (refreshModeSelect) {
+    refreshModeSelect.disabled = !apiAvailable;
+  }
 }
 
 function renderTabs(activeId) {
   const tabs = document.getElementById("view-tabs");
-  tabs.innerHTML = views
+  const visibleViews = getVisibleViews();
+  tabs.innerHTML = visibleViews
     .map(
       (view) =>
         `<a href="#" class="${view.id === activeId ? "active" : ""}" data-view="${view.id}">${view.label}</a>`
@@ -1436,11 +1471,13 @@ function studyDraftMarkup(draft) {
 }
 
 function setActiveView(viewId) {
-  currentViewId = viewId;
-  renderTabs(viewId);
+  const visibleViews = getVisibleViews();
+  const nextViewId = visibleViews.some((view) => view.id === viewId) ? viewId : "dashboard";
+  currentViewId = nextViewId;
+  renderTabs(nextViewId);
   views.forEach((view) => {
     const el = document.getElementById(`view-${view.id}`);
-    el.classList.toggle("hidden", view.id !== viewId);
+    el.classList.toggle("hidden", view.id !== nextViewId);
   });
 }
 
@@ -1946,6 +1983,7 @@ async function init() {
         authUser = await loginDemoAdmin();
       }
     } catch (error) {
+      apiAvailable = false;
       console.warn("Auth bootstrap fallback:", error);
     }
   }
@@ -1956,6 +1994,7 @@ async function init() {
     selectedTrendViewKey = null;
     selectedTrendSeriesId = "all";
   } catch (error) {
+    apiAvailable = false;
     console.warn("Falling back to local payload:", error);
     appData = resolveAppData();
   }
@@ -1966,6 +2005,7 @@ async function init() {
       studyTemplate = template;
     }
   } catch (error) {
+    apiAvailable = false;
     console.warn("Falling back to local study template:", error);
   }
 
@@ -1981,6 +2021,7 @@ async function init() {
       primeJobNotificationState();
     }
   } catch (error) {
+    apiAvailable = false;
     console.warn("Falling back to single study mode:", error);
   }
 
