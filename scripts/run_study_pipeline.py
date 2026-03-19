@@ -8,8 +8,10 @@ import sys
 from pathlib import Path
 
 from demand_intelligence_server import (
+    choose_adaptive_mode,
     load_study_record,
     materialize_record,
+    run_hot_thread_rebuild,
     save_study_record,
 )
 
@@ -21,8 +23,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--study-id", required=True, help="Study id saved under data/studies/")
     parser.add_argument(
         "--mode",
-        choices=["seeded", "browser"],
-        default="seeded",
+        choices=["seeded", "browser", "hot_threads", "adaptive"],
+        default="adaptive",
         help="Use the saved seed dataset or run the browser Reddit collector first.",
     )
     parser.add_argument(
@@ -44,7 +46,7 @@ def run_browser_collection(record: dict, continue_on_error: bool) -> Path:
 
     command = [
         sys.executable,
-        "scripts/reddit_browser_pipeline.py",
+        "scripts/reddit_thread_pipeline.py",
         "--config",
         config_path,
         "--raw-output",
@@ -65,10 +67,20 @@ def main() -> None:
     if not record:
         raise SystemExit(f"Study not found: {args.study_id}")
 
+    resolved_mode = args.mode
+    if args.mode == "adaptive":
+        resolved_mode, reason = choose_adaptive_mode(record)
+        print(f"Adaptive mode resolved to: {resolved_mode}")
+        print(f"Reason: {reason}")
+
     input_path = Path(record.get("source", {}).get("input_path", ""))
-    if args.mode == "browser":
+    if resolved_mode == "browser":
         input_path = run_browser_collection(record, args.continue_on_error)
         record["source"]["type"] = "browser_reddit"
+        record["source"]["input_path"] = str(input_path)
+    elif resolved_mode == "hot_threads":
+        input_path = run_hot_thread_rebuild(record)
+        record["source"]["type"] = "browser_reddit_thread_pipeline"
         record["source"]["input_path"] = str(input_path)
 
     if not input_path.exists():
@@ -80,6 +92,15 @@ def main() -> None:
     print(f"Study rebuilt: {record['id']}")
     print(f"Payload: {record.get('artifacts', {}).get('payload_json_path', '')}")
     print(f"Config: {record.get('artifacts', {}).get('config_path', '')}")
+    print(f"Manifest: {record.get('artifacts', {}).get('manifest_path', '')}")
+    print(f"Threads: {record.get('artifacts', {}).get('threads_path', '')}")
+    print(f"Signals: {record.get('artifacts', {}).get('signals_path', '')}")
+    print(
+        "Foundation: "
+        f"{record.get('data_foundation', {}).get('thread_count', 0)} threads / "
+        f"{record.get('data_foundation', {}).get('comment_count', 0)} comments / "
+        f"{record.get('data_foundation', {}).get('comment_capture_state', 'thread_only')}"
+    )
     print(f"Source type: {record.get('source', {}).get('type', '')}")
 
 

@@ -3,20 +3,41 @@ window.__MVP_PAYLOAD__ = {
     "topic": "美国 dropshipping / 履约与 supplier 问题",
     "market": "美国 dropshipping",
     "dateRange": "最新 564 条定向采样",
-    "updatedAt": "2026-03-18 19:42",
-    "confidence": "High"
+    "updatedAt": "2026-03-19 14:08",
+    "confidence": "High",
+    "threadCount": 564,
+    "commentCount": 0,
+    "commentCoverageRate": 0.0,
+    "hotRefresh": {
+      "mode": "hot_threads",
+      "candidate_count": 0,
+      "selected_count": 0,
+      "stale_candidate_count": 0,
+      "high_priority_candidate_count": 0,
+      "missing_comment_capture_count": 0,
+      "recommended_mode": "browser",
+      "thresholds": {
+        "max_count": 10,
+        "min_comments": 5,
+        "min_score": 3,
+        "max_age_hours": 168.0,
+        "stale_after_hours": 8.0,
+        "min_refresh_gap_minutes": 45
+      },
+      "selected_threads": []
+    }
   },
   "summary": {
     "headline": "优先打“运营期 / 替换中 / 履约与发货”，主推 `3PL & Fulfillment Audit`。",
     "explanation": "当前样本里，履约与发货 的综合机会分最高，更适合作为第一主产品入口；`Supplier Match Sprint` 适合作为第二优先级产品保留。",
     "metrics": [
       {
-        "value": "87.1",
+        "value": "80.1",
         "label": "Opportunity Score",
         "note": "当前最值得先打：履约与发货"
       },
       {
-        "value": "83",
+        "value": "79",
         "label": "Packaging Readiness",
         "note": "当前最容易卖清楚：3PL & Fulfillment Audit"
       },
@@ -26,24 +47,33 @@ window.__MVP_PAYLOAD__ = {
         "note": "履约与发货 在最近窗口里的变化"
       },
       {
-        "value": "564",
-        "label": "样本量",
-        "note": "当前定向补采后的总帖子数"
+        "value": "0/564",
+        "label": "评论覆盖",
+        "note": "已抓到评论的 thread 占比，累计评论 0 条"
+      },
+      {
+        "value": "0",
+        "label": "Hot Threads",
+        "note": "当前可增量刷新的高价值 thread，推荐模式 browser"
       }
     ]
   },
   "todayChanged": [
     {
       "title": "履约主题是当前最强主线",
-      "body": "在 564 条样本里，履约与发货 的综合机会分最高，高意向样本有 48 条，且 末端窗口上升 3，最适合先做主打入口。"
+      "body": "在 564 条样本里，履约与发货 的综合机会分最高，高意向样本有 48 条，评论确认度 0.0，且 末端窗口上升 3，最适合先做主打入口。"
     },
     {
       "title": "Supplier 仍然值得保留为第二主产品",
-      "body": "供应商与采购 的数量和明确求助表达都不弱，当前 末端窗口上升 3，适合作为第二优先级 offer，而不是直接放弃。"
+      "body": "供应商与采购 的数量和明确求助表达都不弱，当前 末端窗口上升 3，推荐密度 0.00，适合作为第二优先级 offer，而不是直接放弃。"
     },
     {
       "title": "Risk / Cost 更适合作为补充卖点",
-      "body": "质量风险和利润压力都真实存在，但最近窗口里还没有出现像履约或 supplier 那样连续增强的购买信号。"
+      "body": "质量风险和利润压力都真实存在，但评论里的确认和解决方案推荐还没有像履约或 supplier 那样形成持续共识。"
+    },
+    {
+      "title": "高价值 thread 已可走增量刷新",
+      "body": "当前筛出 0 个候选 hot thread，其中 0 个已进入 stale 区间，适合优先用 hot_threads 模式补评论和热度变化。"
     }
   ],
   "weeklyActions": [
@@ -60,6 +90,14 @@ window.__MVP_PAYLOAD__ = {
       "body": "先找出延迟和退款背后的真正 bottleneck，再决定该不该换方案。"
     },
     {
+      "title": "评论信号",
+      "body": "确认度 0.0 / 推荐密度 0.00"
+    },
+    {
+      "title": "刷新建议",
+      "body": "建议模式：browser · 候选 0 条"
+    },
+    {
       "title": "暂缓投入",
       "body": "不要把 risk / cost 主题当成第一主打入口"
     }
@@ -69,69 +107,81 @@ window.__MVP_PAYLOAD__ = {
       "id": "fulfillment_setup",
       "name": "运营期 / 替换中 / 履约与发货",
       "pain": "发货慢、退款增加、3PL 结构不清楚",
-      "opportunity": 87.1,
-      "packaging": 83,
+      "opportunity": 80.1,
+      "packaging": 79,
       "confidence": "High",
       "trend": "样本最强",
       "actionMode": "立即测试",
       "recommendedProduct": "3PL & Fulfillment Audit",
-      "rationale": "履约与发货 相关问题在当前样本里共有 85 条，高意向样本 48 条，说明它既真实存在，也更容易被业务团队拿来测试。",
+      "rationale": "履约与发货 相关问题在当前样本里共有 85 条，高意向样本 48 条，评论确认度 0.0，推荐密度 0.00，说明它既真实存在，也更容易被业务团队拿来测试。",
       "signals": [
         "Thieves on Fiverr, Upwork, and 3PL company..",
         "Do I actually need a fulfillment center or is that overkill for dropshipping?",
         "Moved from print on demand to private label skincare and my shopify fulfillment is now a full time job I didn't sign up for"
-      ]
+      ],
+      "commentConfirmationScore": 0.0,
+      "recommendationDensity": 0.0,
+      "objectionDensity": 0.0
     },
     {
       "id": "supplier_match",
       "name": "扩张期 / 求解中 / 供应商与采购",
       "pain": "想找 private supplier，但担心稳定性和执行能力",
-      "opportunity": 80.2,
-      "packaging": 71,
+      "opportunity": 73.8,
+      "packaging": 67,
       "confidence": "High",
       "trend": "第二主线",
       "actionMode": "第二优先级测试",
       "recommendedProduct": "Supplier Match Sprint",
-      "rationale": "供应商与采购 相关问题在当前样本里共有 89 条，高意向样本 26 条，说明它既真实存在，也更容易被业务团队拿来测试。",
+      "rationale": "供应商与采购 相关问题在当前样本里共有 89 条，高意向样本 26 条，评论确认度 0.0，推荐密度 0.00，说明它既真实存在，也更容易被业务团队拿来测试。",
       "signals": [
         "Looking for a private dropshipping supplier – Beauty / Health / Home / Garden [Europe]",
         "Looking for a reliable sourcing agent in China",
         "Looking For Reliable and Fast Private Agent in China"
-      ]
+      ],
+      "commentConfirmationScore": 0.0,
+      "recommendationDensity": 0.0,
+      "objectionDensity": 0.0
     },
     {
       "id": "china_risk_control",
       "name": "运营期 / 认知中 / 质量与风险",
       "pain": "QC 不稳、错发漏发、fake supplier 风险",
-      "opportunity": 42.7,
-      "packaging": 52,
+      "opportunity": 39.4,
+      "packaging": 50,
       "confidence": "Low",
       "trend": "支持型主题",
       "actionMode": "继续观察",
       "recommendedProduct": "China Buying Risk Check",
-      "rationale": "质量与风险 相关问题在当前样本里共有 15 条，高意向样本 2 条，说明它既真实存在，也更容易被业务团队拿来测试。",
+      "rationale": "质量与风险 相关问题在当前样本里共有 15 条，高意向样本 2 条，评论确认度 0.0，推荐密度 0.00，说明它既真实存在，也更容易被业务团队拿来测试。",
       "signals": [
         "Need reliable China manufacturers for custom 316L stainless steel jewelry - looking for small MOQ, good quality, responsive suppliers",
         "Need reliable China manufacturers for custom 316L stainless steel jewelry - looking for small MOQ, good quality, responsive suppliers",
         "Aliexpress = Trash quality?"
-      ]
+      ],
+      "commentConfirmationScore": 0.0,
+      "recommendationDensity": 0.0,
+      "objectionDensity": 0.0
     },
     {
       "id": "cost_down",
       "name": "验证期 / 比较中 / 成本与利润",
       "pain": "成本压力真实存在，但还不是最锋利的购买入口",
-      "opportunity": 41.2,
-      "packaging": 49,
+      "opportunity": 38.1,
+      "packaging": 46,
       "confidence": "Low",
       "trend": "补充卖点",
       "actionMode": "暂缓投入",
       "recommendedProduct": "Cost-Down Review",
-      "rationale": "成本与利润 相关问题在当前样本里共有 18 条，高意向样本 1 条，说明它既真实存在，也更容易被业务团队拿来测试。",
+      "rationale": "成本与利润 相关问题在当前样本里共有 18 条，高意向样本 1 条，评论确认度 0.0，推荐密度 0.00，说明它既真实存在，也更容易被业务团队拿来测试。",
       "signals": [
         "Looking for Friendly Advice on Tump Tariff Headaches",
         "Trump's Tariff Won't Make Me Quit Dropshipping. Here's Why.",
         "1K orders, 46K sales,... but 10K profit :)"
-      ]
+      ],
+      "commentConfirmationScore": 0.0,
+      "recommendationDensity": 0.0,
+      "objectionDensity": 0.0
     }
   ],
   "packages": [
@@ -171,37 +221,43 @@ window.__MVP_PAYLOAD__ = {
       "quote": "Thieves on Fiverr, Upwork, and 3PL company..",
       "source": "r/dropship",
       "segment": "运营期 / 替换中 / 履约与发货",
-      "pain": "履约与发货"
+      "pain": "履约与发货",
+      "sourceLevel": "thread"
     },
     {
       "quote": "Do I actually need a fulfillment center or is that overkill for dropshipping?",
       "source": "r/dropship",
       "segment": "运营期 / 替换中 / 履约与发货",
-      "pain": "履约与发货"
+      "pain": "履约与发货",
+      "sourceLevel": "thread"
     },
     {
       "quote": "Looking for a private dropshipping supplier – Beauty / Health / Home / Garden [Europe]",
       "source": "r/dropshipping",
       "segment": "扩张期 / 求解中 / 供应商与采购",
-      "pain": "供应商与采购"
+      "pain": "供应商与采购",
+      "sourceLevel": "thread"
     },
     {
       "quote": "Looking for a reliable sourcing agent in China",
       "source": "r/dropship",
       "segment": "扩张期 / 求解中 / 供应商与采购",
-      "pain": "供应商与采购"
+      "pain": "供应商与采购",
+      "sourceLevel": "thread"
     },
     {
       "quote": "Need reliable China manufacturers for custom 316L stainless steel jewelry - looking for small MOQ, good quality, responsive suppliers",
       "source": "r/dropshipping",
       "segment": "运营期 / 认知中 / 质量与风险",
-      "pain": "质量与风险"
+      "pain": "质量与风险",
+      "sourceLevel": "thread"
     },
     {
       "quote": "Need reliable China manufacturers for custom 316L stainless steel jewelry - looking for small MOQ, good quality, responsive suppliers",
       "source": "r/dropshipping",
       "segment": "运营期 / 认知中 / 质量与风险",
-      "pain": "质量与风险"
+      "pain": "质量与风险",
+      "sourceLevel": "thread"
     }
   ],
   "heatmap": {
@@ -367,8 +423,11 @@ window.__MVP_PAYLOAD__ = {
       "high_intent": 48,
       "avg_urgency": 6.0,
       "avg_specificity": 3.8,
-      "opportunity_score": 87.1,
-      "packaging_score": 83
+      "opportunity_score": 80.1,
+      "packaging_score": 79,
+      "comment_confirmation_score": 0.0,
+      "recommendation_density": 0.0,
+      "objection_density": 0.0
     },
     {
       "name": "供应商与采购",
@@ -378,8 +437,11 @@ window.__MVP_PAYLOAD__ = {
       "high_intent": 26,
       "avg_urgency": 4.3,
       "avg_specificity": 3.8,
-      "opportunity_score": 80.2,
-      "packaging_score": 71
+      "opportunity_score": 73.8,
+      "packaging_score": 67,
+      "comment_confirmation_score": 0.0,
+      "recommendation_density": 0.0,
+      "objection_density": 0.0
     },
     {
       "name": "质量与风险",
@@ -389,8 +451,11 @@ window.__MVP_PAYLOAD__ = {
       "high_intent": 2,
       "avg_urgency": 3.1,
       "avg_specificity": 2.5,
-      "opportunity_score": 42.7,
-      "packaging_score": 52
+      "opportunity_score": 39.4,
+      "packaging_score": 50,
+      "comment_confirmation_score": 0.0,
+      "recommendation_density": 0.0,
+      "objection_density": 0.0
     }
   ],
   "trendSeries": {
@@ -896,10 +961,32 @@ window.__MVP_PAYLOAD__ = {
     "source_count": 2,
     "keyword_count": 8,
     "top_source": "r/dropship",
-    "top_driver": "履约与发货"
+    "top_driver": "履约与发货",
+    "thread_count": 564,
+    "comment_count": 0,
+    "comment_enriched_records": 0,
+    "comment_confirmation_score": 0.0,
+    "recommendation_density": 0.0,
+    "objection_density": 0.0,
+    "hot_thread_candidates": 0,
+    "hot_thread_recommended_mode": "browser"
+  },
+  "commentIntelligence": {
+    "overall": {
+      "total": 0,
+      "confirm": 0,
+      "recommend": 0,
+      "contradict": 0,
+      "objection": 0,
+      "solution_mentions": 0,
+      "comment_confirmation_score": 0.0,
+      "recommendation_density": 0.0,
+      "objection_density": 0.0
+    },
+    "by_pain": {}
   },
   "weeklyBrief": {
-    "topChange": "整体机会仍由 履约与发货 主导，但最近窗口里 供应商与采购 末端窗口上升 3，说明第二产品值得继续保留和测试。",
+    "topChange": "整体机会仍由 履约与发货 主导，但最近窗口里 供应商与采购 末端窗口上升 3，同时评论推荐密度 0.00，说明第二产品值得继续保留和测试。",
     "topSegments": [
       "运营期 / 替换中 / 履约与发货",
       "扩张期 / 求解中 / 供应商与采购",
@@ -914,7 +1001,7 @@ window.__MVP_PAYLOAD__ = {
     "nextWeek": [
       "统一测试 3PL & Fulfillment Audit 的主话术",
       "保留 Supplier Match Sprint 作为第二优先级",
-      "继续跟踪趋势时间序列，验证当前升温是否在延续"
+      "继续跟踪评论确认度、推荐密度与异议密度，验证当前升温是否在延续"
     ]
   }
 };

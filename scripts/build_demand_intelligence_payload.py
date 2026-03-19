@@ -229,8 +229,49 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def iter_comment_bodies(comments: Any, limit: int = 12) -> list[str]:
+    bodies: list[str] = []
+
+    def walk(items: Any) -> None:
+        if len(bodies) >= limit or not isinstance(items, list):
+            return
+        for item in items:
+            if len(bodies) >= limit:
+                return
+            if not isinstance(item, dict):
+                continue
+            body = str(item.get("body") or item.get("text") or "").strip()
+            if body:
+                bodies.append(body)
+            walk(item.get("replies"))
+
+    walk(comments)
+    return bodies
+
+
+def comment_count(record: dict[str, Any]) -> int:
+    return len(iter_comment_bodies(record.get("comments"), limit=999))
+
+
+def iter_comment_dicts(comments: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+
+    def walk(items: Any) -> None:
+        if not isinstance(items, list):
+            return
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            rows.append(item)
+            walk(item.get("replies"))
+
+    walk(comments)
+    return rows
+
+
 def content_text(record: dict[str, Any]) -> str:
-    return f"{record.get('title', '')} {record.get('body', '')}".lower()
+    discussion = " ".join(iter_comment_bodies(record.get("comments")))
+    return f"{record.get('title', '')} {record.get('body', '')} {discussion}".lower()
 
 
 def text_of(record: dict[str, Any]) -> str:
@@ -322,23 +363,161 @@ def classify_row(record: dict[str, Any]) -> str:
     return best_id
 
 
-def priority_score(volume_score: float, avg_urgency: float, fishgoo_fit: float, monetization: float) -> float:
-    raw = (volume_score * 0.35) + (avg_urgency * 0.25) + (fishgoo_fit * 0.25) + (monetization * 0.15)
+def priority_score(
+    volume_score: float,
+    avg_urgency: float,
+    fishgoo_fit: float,
+    monetization: float,
+    comment_confirmation_score: float = 0.0,
+    recommendation_density: float = 0.0,
+    objection_density: float = 0.0,
+) -> float:
+    raw = (
+        (volume_score * 0.32)
+        + (avg_urgency * 0.23)
+        + (fishgoo_fit * 0.23)
+        + (monetization * 0.14)
+        + (comment_confirmation_score * 0.05)
+        + (recommendation_density * 0.04)
+        - (objection_density * 0.03)
+    )
     return round(raw * 10, 1)
 
 
-def packaging_score(base: float, avg_specificity: float, avg_urgency: float, count: int, max_count: int) -> int:
+def packaging_score(
+    base: float,
+    avg_specificity: float,
+    avg_urgency: float,
+    count: int,
+    max_count: int,
+    comment_confirmation_score: float = 0.0,
+    recommendation_density: float = 0.0,
+    objection_density: float = 0.0,
+) -> int:
     evidence_strength = (count / max_count) * 10 if max_count else 0
-    score = (base * 0.75) + (avg_specificity * 2.0) + (avg_urgency * 1.2) + (evidence_strength * 0.7)
+    score = (
+        (base * 0.72)
+        + (avg_specificity * 1.9)
+        + (avg_urgency * 1.1)
+        + (evidence_strength * 0.65)
+        + (comment_confirmation_score * 1.1)
+        + (recommendation_density * 1.2)
+        - (objection_density * 0.9)
+    )
     return max(40, min(int(round(score)), 92))
 
 
-def confidence_label(count: int, high_urgency_count: int) -> str:
+def confidence_label(count: int, high_urgency_count: int, comment_signal_count: int = 0, comment_coverage_rate: float = 0.0) -> str:
+    if count >= 80 and high_urgency_count >= 20 and comment_coverage_rate >= 20:
+        return "High"
     if count >= 80 and high_urgency_count >= 20:
         return "High"
-    if count >= 30:
+    if count >= 30 or comment_signal_count >= 8:
         return "Medium"
     return "Low"
+
+
+def derive_comment_signal_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+    by_pain: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "comment_signal_count": 0,
+            "confirm_count": 0,
+            "recommend_count": 0,
+            "contradict_count": 0,
+            "objection_count": 0,
+            "solution_mention_count": 0,
+            "sample_comments": [],
+        }
+    )
+
+    for record in records:
+        pain = classify_pain(record)
+        bucket = by_pain[pain]
+        for comment in iter_comment_dicts(record.get("comments")):
+            body = str(comment.get("body") or comment.get("text") or "").strip()
+            if not body:
+                continue
+            lower = body.lower()
+            bucket["comment_signal_count"] += 1
+            if any(token in lower for token in ["same problem", "same issue", "same here", "me too"]):
+                bucket["confirm_count"] += 1
+            if any(token in lower for token in ["use", "try", "recommend", "switch to", "go with"]):
+                bucket["recommend_count"] += 1
+            if any(token in lower for token in ["don't", "not true", "wrong", "disagree"]):
+                bucket["contradict_count"] += 1
+            if any(token in lower for token in ["expensive", "too much", "overpriced", "slow", "delay", "late", "scam", "fake", "trust"]):
+                bucket["objection_count"] += 1
+            if any(token in lower for token in ["3pl", "fulfillment", "supplier", "agent", "warehouse"]):
+                bucket["solution_mention_count"] += 1
+            if len(bucket["sample_comments"]) < 3:
+                bucket["sample_comments"].append(body[:140])
+
+    thread_counts_by_pain = Counter(classify_pain(record) for record in records)
+    normalized_by_pain: dict[str, dict[str, Any]] = {}
+    overall = {
+        "comment_signal_count": 0,
+        "confirm_count": 0,
+        "recommend_count": 0,
+        "contradict_count": 0,
+        "objection_count": 0,
+        "solution_mention_count": 0,
+        "sample_comments": [],
+    }
+    for pain, bucket in by_pain.items():
+        total = bucket["comment_signal_count"]
+        thread_count = max(thread_counts_by_pain.get(pain, 0), 1)
+        net_confirmation = bucket["confirm_count"] + (bucket["recommend_count"] * 0.5) - bucket["contradict_count"]
+        normalized = {
+            **bucket,
+            "comment_confirmation_score": max(0.0, min(10.0, round(5 + (net_confirmation / max(total, 1)) * 5, 1))) if total else 0.0,
+            "recommendation_density": round((bucket["recommend_count"] + bucket["solution_mention_count"]) / thread_count, 2),
+            "objection_density": round((bucket["objection_count"] + bucket["contradict_count"]) / thread_count, 2),
+        }
+        normalized_by_pain[pain] = normalized
+        for key in overall:
+            if key == "sample_comments":
+                overall[key].extend(bucket[key][: max(0, 5 - len(overall[key]))])
+            else:
+                overall[key] += bucket[key]
+
+    total_comments = overall["comment_signal_count"]
+    overall["comment_confirmation_score"] = (
+        max(
+            0.0,
+            min(
+                10.0,
+                round(
+                    5
+                    + (
+                        (
+                            overall["confirm_count"]
+                            + (overall["recommend_count"] * 0.5)
+                            - overall["contradict_count"]
+                        )
+                        / max(total_comments, 1)
+                    )
+                    * 5,
+                    1,
+                ),
+            ),
+        )
+        if total_comments
+        else 0.0
+    )
+    overall["recommendation_density"] = round(
+        (overall["recommend_count"] + overall["solution_mention_count"]) / max(len(records), 1), 2
+    )
+    overall["objection_density"] = round(
+        (overall["objection_count"] + overall["contradict_count"]) / max(len(records), 1), 2
+    )
+    return {"overall": overall, "by_pain": normalized_by_pain}
+
+
+def resolve_comment_signal_metrics(records: list[dict[str, Any]], entity_bundle: dict[str, Any] | None) -> dict[str, Any]:
+    manifest_metrics = ((entity_bundle or {}).get("manifest", {}) or {}).get("comment_intelligence")
+    if manifest_metrics:
+        return manifest_metrics
+    return derive_comment_signal_metrics(records)
 
 
 def normalize_heat(value: int, row_max: int) -> tuple[int, str]:
@@ -550,11 +729,21 @@ def build_trend_views(records: list[dict[str, Any]], pain_groups: dict[str, list
     }
 
 
-def build_payload(records: list[dict[str, Any]], study_title: str, market: str, date_range: str) -> dict[str, Any]:
+def build_payload(
+    records: list[dict[str, Any]],
+    study_title: str,
+    market: str,
+    date_range: str,
+    entity_bundle: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    manifest = (entity_bundle or {}).get("manifest", {}) if isinstance(entity_bundle, dict) else {}
+    hot_refresh = manifest.get("hot_refresh", {}) if isinstance(manifest, dict) else {}
     pain_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     row_matrix: dict[str, Counter[str]] = defaultdict(Counter)
     subreddit_counter: Counter[str] = Counter()
     search_term_counter: Counter[str] = Counter()
+    comment_enriched_records = 0
+    total_comment_count = 0
 
     for record in records:
         pain = classify_pain(record)
@@ -566,6 +755,14 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
         search_term = str(record.get("search_term", "")).strip()
         if search_term:
             search_term_counter[search_term] += 1
+        captured_comments = comment_count(record)
+        if captured_comments:
+            comment_enriched_records += 1
+            total_comment_count += captured_comments
+
+    comment_signal_metrics = resolve_comment_signal_metrics(records, entity_bundle)
+    overall_comment_metrics = comment_signal_metrics.get("overall", {})
+    comment_coverage_rate = round((comment_enriched_records / len(records)) * 100, 1) if records else 0.0
 
     filtered_counts = {key: len(pain_groups.get(key, [])) for key in PAIN_ORDER}
     max_count = max(filtered_counts.values(), default=1)
@@ -581,8 +778,30 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
         avg_specificity = round(sum(specificity_score(item) for item in items) / count, 1)
         high_urgency_count = sum(1 for item in items if urgency_score(item) >= 7.0)
         volume_score = round((count / max_count) * 10, 1) if max_count else 0.0
-        opportunity = priority_score(volume_score, avg_urgency, config["fishgoo_fit"], config["monetization"])
-        packaging = packaging_score(config["packaging_base"], avg_specificity, avg_urgency, count, max_count)
+        pain_comment_metrics = comment_signal_metrics.get("by_pain", {}).get(key, {})
+        comment_confirmation_score = float(pain_comment_metrics.get("comment_confirmation_score", 0.0))
+        recommendation_density = float(pain_comment_metrics.get("recommendation_density", 0.0))
+        objection_density = float(pain_comment_metrics.get("objection_density", 0.0))
+        comment_signal_count = int(pain_comment_metrics.get("comment_signal_count", 0))
+        opportunity = priority_score(
+            volume_score,
+            avg_urgency,
+            config["fishgoo_fit"],
+            config["monetization"],
+            comment_confirmation_score,
+            recommendation_density,
+            objection_density,
+        )
+        packaging = packaging_score(
+            config["packaging_base"],
+            avg_specificity,
+            avg_urgency,
+            count,
+            max_count,
+            comment_confirmation_score,
+            recommendation_density,
+            objection_density,
+        )
         opportunities.append(
             {
                 "id": key,
@@ -593,7 +812,12 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
                 "high_urgency_count": high_urgency_count,
                 "opportunity": opportunity,
                 "packaging": packaging,
-                "confidence": confidence_label(count, high_urgency_count),
+                "confidence": confidence_label(count, high_urgency_count, comment_signal_count, comment_coverage_rate),
+                "comment_confirmation_score": comment_confirmation_score,
+                "recommendation_density": recommendation_density,
+                "objection_density": objection_density,
+                "comment_signal_count": comment_signal_count,
+                "sample_comments": pain_comment_metrics.get("sample_comments", []),
             }
         )
 
@@ -631,9 +855,14 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
             "note": f"{PAIN_CATEGORIES[lead['id']]['label']} 在最近窗口里的变化",
         },
         {
-            "value": f"{len(records)}",
-            "label": "样本量",
-            "note": "当前定向补采后的总帖子数",
+            "value": f"{comment_enriched_records}/{len(records)}",
+            "label": "评论覆盖",
+            "note": f"已抓到评论的 thread 占比，累计评论 {total_comment_count} 条",
+        },
+        {
+            "value": str(hot_refresh.get("selected_count", 0)),
+            "label": "Hot Threads",
+            "note": f"当前可增量刷新的高价值 thread，推荐模式 {hot_refresh.get('recommended_mode', 'browser')}",
         },
     ]
 
@@ -642,19 +871,27 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
             "title": "履约主题是当前最强主线",
             "body": (
                 f"在 {len(records)} 条样本里，{PAIN_CATEGORIES[lead['id']]['label']} 的综合机会分最高，"
-                f"高意向样本有 {lead['high_urgency_count']} 条，且 {trend_phrase(lead_trend)}，最适合先做主打入口。"
+                f"高意向样本有 {lead['high_urgency_count']} 条，评论确认度 {lead['comment_confirmation_score']:.1f}，且 {trend_phrase(lead_trend)}，最适合先做主打入口。"
             ),
         },
         {
             "title": "Supplier 仍然值得保留为第二主产品",
             "body": (
                 f"{PAIN_CATEGORIES[secondary['id']]['label']} 的数量和明确求助表达都不弱，"
-                f"当前 {trend_phrase(secondary_trend)}，适合作为第二优先级 offer，而不是直接放弃。"
+                f"当前 {trend_phrase(secondary_trend)}，推荐密度 {secondary['recommendation_density']:.2f}，适合作为第二优先级 offer，而不是直接放弃。"
             ),
         },
         {
             "title": "Risk / Cost 更适合作为补充卖点",
-            "body": "质量风险和利润压力都真实存在，但最近窗口里还没有出现像履约或 supplier 那样连续增强的购买信号。",
+            "body": "质量风险和利润压力都真实存在，但评论里的确认和解决方案推荐还没有像履约或 supplier 那样形成持续共识。",
+        },
+        {
+            "title": "高价值 thread 已可走增量刷新",
+            "body": (
+                f"当前筛出 {hot_refresh.get('candidate_count', 0)} 个候选 hot thread，"
+                f"其中 {hot_refresh.get('stale_candidate_count', 0)} 个已进入 stale 区间，"
+                f"适合优先用 hot_threads 模式补评论和热度变化。"
+            ),
         },
     ]
 
@@ -662,6 +899,8 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
         {"title": "主推产品", "body": PAIN_CATEGORIES[lead["id"]]["offer"]},
         {"title": "主攻客群", "body": PAIN_CATEGORIES[lead["id"]]["segment_name"]},
         {"title": "测试话术", "body": PAIN_CATEGORIES[lead["id"]]["promise"]},
+        {"title": "评论信号", "body": f"确认度 {overall_comment_metrics.get('comment_confirmation_score', 0):.1f} / 推荐密度 {overall_comment_metrics.get('recommendation_density', 0):.2f}"},
+        {"title": "刷新建议", "body": f"建议模式：{hot_refresh.get('recommended_mode', 'browser')} · 候选 {hot_refresh.get('candidate_count', 0)} 条"},
         {"title": "暂缓投入", "body": "不要把 risk / cost 主题当成第一主打入口"},
     ]
 
@@ -687,9 +926,16 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
                 "recommendedProduct": config["offer"],
                 "rationale": (
                     f"{config['label']} 相关问题在当前样本里共有 {item['count']} 条，"
-                    f"高意向样本 {item['high_urgency_count']} 条，说明它既真实存在，也更容易被业务团队拿来测试。"
+                    f"高意向样本 {item['high_urgency_count']} 条，评论确认度 {item['comment_confirmation_score']:.1f}，"
+                    f"推荐密度 {item['recommendation_density']:.2f}，说明它既真实存在，也更容易被业务团队拿来测试。"
                 ),
-                "signals": [post.get("title", "") for post in top_signals if post.get("title")],
+                "signals": (
+                    item["sample_comments"][:2]
+                    + [post.get("title", "") for post in top_signals if post.get("title")]
+                )[:3],
+                "commentConfirmationScore": item["comment_confirmation_score"],
+                "recommendationDensity": item["recommendation_density"],
+                "objectionDensity": item["objection_density"],
             }
         )
         packages.append(
@@ -720,6 +966,7 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
                     "source": f"r/{post.get('subreddit', '')}",
                     "segment": config["segment_name"],
                     "pain": config["label"],
+                    "sourceLevel": "comment" if post.get("comments") else "thread",
                 }
             )
 
@@ -761,6 +1008,9 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
                 "avg_specificity": item["avg_specificity"],
                 "opportunity_score": item["opportunity"],
                 "packaging_score": item["packaging"],
+                "comment_confirmation_score": item["comment_confirmation_score"],
+                "recommendation_density": item["recommendation_density"],
+                "objection_density": item["objection_density"],
             }
         )
 
@@ -771,6 +1021,10 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
             "dateRange": date_range,
             "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "confidence": lead["confidence"],
+            "threadCount": len(records),
+            "commentCount": total_comment_count,
+            "commentCoverageRate": comment_coverage_rate,
+            "hotRefresh": hot_refresh,
         },
         "summary": {
             "headline": (
@@ -801,12 +1055,21 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
             "keyword_count": len(keyword_breakdown),
             "top_source": source_breakdown[0]["name"] if source_breakdown else "N/A",
             "top_driver": opportunity_drivers[0]["name"] if opportunity_drivers else "N/A",
+            "thread_count": len(records),
+            "comment_count": total_comment_count,
+            "comment_enriched_records": comment_enriched_records,
+            "comment_confirmation_score": overall_comment_metrics.get("comment_confirmation_score", 0),
+            "recommendation_density": overall_comment_metrics.get("recommendation_density", 0),
+            "objection_density": overall_comment_metrics.get("objection_density", 0),
+            "hot_thread_candidates": hot_refresh.get("candidate_count", 0),
+            "hot_thread_recommended_mode": hot_refresh.get("recommended_mode", "browser"),
         },
+        "commentIntelligence": comment_signal_metrics,
         "weeklyBrief": {
             "topChange": (
                 f"整体机会仍由 {PAIN_CATEGORIES[lead['id']]['label']} 主导，"
                 f"但最近窗口里 {PAIN_CATEGORIES[secondary['id']]['label']} {trend_phrase(secondary_trend)}，"
-                "说明第二产品值得继续保留和测试。"
+                f"同时评论推荐密度 {secondary['recommendation_density']:.2f}，说明第二产品值得继续保留和测试。"
             ),
             "topSegments": [segment["name"] for segment in segments[:3]],
             "leadPackage": PAIN_CATEGORIES[lead["id"]]["offer"],
@@ -818,7 +1081,7 @@ def build_payload(records: list[dict[str, Any]], study_title: str, market: str, 
             "nextWeek": [
                 f"统一测试 {PAIN_CATEGORIES[lead['id']]['offer']} 的主话术",
                 f"保留 {PAIN_CATEGORIES[secondary['id']]['offer']} 作为第二优先级",
-                "继续跟踪趋势时间序列，验证当前升温是否在延续",
+                "继续跟踪评论确认度、推荐密度与异议密度，验证当前升温是否在延续",
             ],
         },
     }

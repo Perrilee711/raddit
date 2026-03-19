@@ -23,5 +23,15 @@
   "browser_wait_seconds": 12,
   "browser_scroll_rounds": 1,
   "browser_scroll_delay_seconds": 1.0,
-  "browser_between_pages_seconds": 1.0
+  "browser_between_pages_seconds": 1.0,
+  "thread_max_comments": 40,
+  "thread_expand_rounds": 2,
+  "thread_scroll_rounds": 3,
+  "thread_delay_seconds": 1.0,
+  "hot_thread_max_count": 10,
+  "hot_thread_min_comments": 5,
+  "hot_thread_min_score": 3,
+  "hot_thread_max_age_hours": 168,
+  "hot_thread_stale_after_hours": 8,
+  "hot_thread_min_refresh_gap_minutes": 45
 }

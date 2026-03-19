@@ -7,6 +7,7 @@ import json
 import mimetypes
 import re
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -18,6 +19,8 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from build_demand_intelligence_payload import build_payload, read_jsonl
+from build_study_entity_store import build_and_write_store
+from hot_thread_policy import summarize_hot_threads
 
 
 STUDY_ID = "fishgoo-us-dropshipping"
@@ -48,10 +51,40 @@ STUDY_CONFIG_DIR = SERVER_ROOT / "config" / "studies"
 STUDY_PRODUCT_DATA_DIR = SERVER_ROOT / "docs" / "product" / "data" / "studies"
 STUDY_RAW_DIR = SERVER_ROOT / "data" / "raw" / "studies"
 STUDY_REPORT_DIR = SERVER_ROOT / "docs" / "reports" / "studies"
+STUDY_ENTITY_DIR = SERVER_ROOT / "data" / "entities" / "studies"
 JOBS_DIR = SERVER_ROOT / "data" / "jobs"
 USERS_FILE = SERVER_ROOT / "config" / "users.json"
 DEFAULT_INPUT = Path("/Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl")
 ROLE_ORDER = {"viewer": 1, "analyst": 2, "admin": 3}
+BROWSER_JOB_MODES = {"browser", "hot_threads"}
+ALL_JOB_MODES = {"seeded", "browser", "hot_threads", "adaptive"}
+QUEUE_LANE_ORDER = {"realtime": 0, "discovery": 1, "maintenance": 2}
+PIPELINE_STAGE_SEQUENCE = {
+    "seeded": ["rebuild_aggregates", "publish_brief"],
+    "browser": ["discover", "harvest", "rebuild_aggregates", "publish_brief"],
+    "hot_threads": ["refresh_hot", "rebuild_aggregates", "publish_brief"],
+}
+STAGE_QUEUE_LANE = {
+    "discover": "discovery",
+    "harvest": "realtime",
+    "refresh_hot": "realtime",
+    "rebuild_aggregates": "maintenance",
+    "publish_brief": "maintenance",
+}
+STAGE_PRIORITY_OFFSET = {
+    "discover": 3,
+    "harvest": 10,
+    "refresh_hot": 12,
+    "rebuild_aggregates": -4,
+    "publish_brief": -8,
+}
+STAGE_LABELS = {
+    "discover": "discover",
+    "harvest": "harvest",
+    "refresh_hot": "refresh_hot",
+    "rebuild_aggregates": "rebuild_aggregates",
+    "publish_brief": "publish_brief",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -95,6 +128,16 @@ def parse_args() -> argparse.Namespace:
 def build_dataset(input_path: Path, study_title: str, market: str, date_range: str) -> dict:
     records = read_jsonl(input_path)
     return build_payload(records, study_title, market, date_range)
+
+
+def build_dataset_from_records(
+    records: list[dict[str, Any]],
+    study_title: str,
+    market: str,
+    date_range: str,
+    entity_bundle: dict[str, Any] | None = None,
+) -> dict:
+    return build_payload(records, study_title, market, date_range, entity_bundle=entity_bundle)
 
 
 def slugify(text: str) -> str:
@@ -191,6 +234,14 @@ def study_report_file(study_id: str) -> Path:
     return STUDY_REPORT_DIR / f"{study_id}.md"
 
 
+def study_entity_root(study_id: str) -> Path:
+    return STUDY_ENTITY_DIR / study_id
+
+
+def study_entity_file(study_id: str, name: str) -> Path:
+    return study_entity_root(study_id) / f"{name}.json"
+
+
 def job_file(job_id: str) -> Path:
     return JOBS_DIR / f"{job_id}.json"
 
@@ -199,6 +250,19 @@ def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
     payload = record["payload"]
     jobs = list_jobs_for_study(record["id"])
     active_job_count = sum(1 for job in jobs if job.get("status") in {"queued", "running"})
+    active_jobs = sorted(
+        [job for job in jobs if job.get("status") in {"queued", "running"}],
+        key=queued_job_sort_key,
+    )
+    lead_job = active_jobs[0] if active_jobs else {}
+    queue_lane_summary = {
+        lane: sum(1 for job in active_jobs if job.get("queue_lane") == lane)
+        for lane in QUEUE_LANE_ORDER
+    }
+    data_foundation = record.get("data_foundation", {})
+    freshness = data_foundation.get("freshness", {})
+    coverage = data_foundation.get("coverage", {})
+    hot_refresh = data_foundation.get("hot_refresh", {})
     return {
         "id": record["id"],
         "title": record["study"]["title"],
@@ -213,6 +277,31 @@ def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
         "config_path": record.get("artifacts", {}).get("config_path", ""),
         "schedule": record.get("schedule", {}),
         "active_job_count": active_job_count,
+        "thread_count": data_foundation.get("thread_count", 0),
+        "comment_count": data_foundation.get("comment_count", 0),
+        "comment_capture_state": data_foundation.get("comment_capture_state", "thread_only"),
+        "comment_capture_rate": coverage.get("comment_coverage", 0),
+        "freshness_score": freshness.get("freshness_score", 0),
+        "last_entity_refresh_at": freshness.get("last_entity_refresh_at"),
+        "build_number": data_foundation.get("refresh", {}).get("build_number", 0),
+        "incremental_mode": data_foundation.get("refresh", {}).get("incremental_mode", "bootstrap"),
+        "new_threads": data_foundation.get("refresh", {}).get("new_threads", 0),
+        "refreshed_threads": data_foundation.get("refresh", {}).get("refreshed_threads", 0),
+        "new_comments": data_foundation.get("refresh", {}).get("new_comments", 0),
+        "active_queue_lane": lead_job.get("queue_lane"),
+        "active_priority_label": lead_job.get("priority_label"),
+        "active_priority_score": lead_job.get("priority_score"),
+        "active_requested_mode": lead_job.get("requested_mode"),
+        "active_resolved_mode": lead_job.get("resolved_mode") or lead_job.get("mode"),
+        "active_strategy_reason": lead_job.get("strategy_reason"),
+        "active_stage_kind": lead_job.get("stage_kind"),
+        "active_stage_label": lead_job.get("stage_label"),
+        "active_pipeline_progress": lead_job.get("pipeline_progress"),
+        "queue_lane_summary": queue_lane_summary,
+        "hot_thread_candidate_count": hot_refresh.get("candidate_count", 0),
+        "hot_thread_selected_count": hot_refresh.get("selected_count", 0),
+        "hot_thread_stale_count": hot_refresh.get("stale_candidate_count", 0),
+        "hot_thread_recommended_mode": hot_refresh.get("recommended_mode", "browser"),
     }
 
 
@@ -228,14 +317,39 @@ def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
     if "schedule" not in record:
         record["schedule"] = {
             "enabled": False,
-            "mode": "seeded",
+            "mode": "adaptive",
             "interval_hours": 24,
             "last_run_at": None,
             "next_run_at": None,
         }
     artifacts = record.get("artifacts", {})
     source = record.get("source", {})
-    if artifacts.get("config_path") and artifacts.get("payload_json_path") and source.get("input_path"):
+    if artifacts.get("manifest_path") and not record.get("data_foundation"):
+        record["data_foundation"] = load_json_file(Path(artifacts["manifest_path"]), {})
+    if record.get("data_foundation") and not record.get("data_foundation", {}).get("hot_refresh"):
+        input_path = Path(source.get("input_path") or str(DEFAULT_INPUT))
+        if input_path.exists():
+            record = materialize_record(record, input_path)
+            save_study_record(record)
+        else:
+            config = load_study_config(record)
+            entity_bundle = load_study_entity_bundle(record["id"])
+            if entity_bundle.get("threads"):
+                entity_bundle = attach_hot_refresh_summary(entity_bundle, config)
+                manifest_path = artifacts.get("manifest_path")
+                if manifest_path:
+                    Path(manifest_path).write_text(
+                        json.dumps(entity_bundle["manifest"], ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                record["data_foundation"] = entity_bundle["manifest"]
+                save_study_record(record)
+    if (
+        artifacts.get("config_path")
+        and artifacts.get("payload_json_path")
+        and artifacts.get("manifest_path")
+        and source.get("input_path")
+    ):
         return record
 
     input_path = Path(source.get("input_path") or str(DEFAULT_INPUT))
@@ -279,9 +393,10 @@ def build_study_record(study_id: str, study_form: dict[str, Any], draft: dict[st
         "payload": payload,
         "source": {},
         "artifacts": {},
+        "data_foundation": {},
         "schedule": {
             "enabled": False,
-            "mode": "seeded",
+            "mode": "adaptive",
             "interval_hours": 24,
             "last_run_at": None,
             "next_run_at": None,
@@ -303,11 +418,21 @@ def build_reddit_config(draft: dict[str, Any]) -> dict[str, Any]:
         "browser_scroll_rounds": 1,
         "browser_scroll_delay_seconds": 1.0,
         "browser_between_pages_seconds": 1.0,
+        "thread_max_comments": 40,
+        "thread_expand_rounds": 2,
+        "thread_scroll_rounds": 3,
+        "thread_delay_seconds": 1.0,
+        "hot_thread_max_count": 10,
+        "hot_thread_min_comments": 5,
+        "hot_thread_min_score": 3,
+        "hot_thread_max_age_hours": 168,
+        "hot_thread_stale_after_hours": 8,
+        "hot_thread_min_refresh_gap_minutes": 45,
     }
 
 
 def ensure_support_dirs() -> None:
-    for path in [STUDIES_DIR, STUDY_CONFIG_DIR, STUDY_PRODUCT_DATA_DIR, STUDY_RAW_DIR, STUDY_REPORT_DIR, JOBS_DIR]:
+    for path in [STUDIES_DIR, STUDY_CONFIG_DIR, STUDY_PRODUCT_DATA_DIR, STUDY_RAW_DIR, STUDY_REPORT_DIR, STUDY_ENTITY_DIR, JOBS_DIR]:
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -328,6 +453,40 @@ def write_study_payload_files(study_id: str, payload: dict[str, Any]) -> tuple[P
     return json_path, js_path
 
 
+def load_json_file(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return default
+
+
+def load_study_entity_bundle(study_id: str) -> dict[str, Any]:
+    return {
+        "manifest": load_json_file(study_entity_file(study_id, "manifest"), {}),
+        "threads": load_json_file(study_entity_file(study_id, "threads"), []),
+        "thread_snapshots": load_json_file(study_entity_file(study_id, "thread_snapshots"), []),
+        "comments": load_json_file(study_entity_file(study_id, "comments"), []),
+        "comment_snapshots": load_json_file(study_entity_file(study_id, "comment_snapshots"), []),
+        "signals": load_json_file(study_entity_file(study_id, "signals"), []),
+    }
+
+
+def load_study_config(record: dict[str, Any]) -> dict[str, Any]:
+    config_path = record.get("artifacts", {}).get("config_path") or record.get("source", {}).get("browser_config_path")
+    fallback = build_reddit_config(record["draft"])
+    if not config_path:
+        return fallback
+    return load_json_file(Path(config_path), fallback)
+
+
+def attach_hot_refresh_summary(entity_bundle: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+    manifest = entity_bundle.setdefault("manifest", {})
+    manifest["hot_refresh"] = summarize_hot_threads(entity_bundle.get("threads", []), config)
+    return entity_bundle
+
+
 def save_job(job: dict[str, Any]) -> None:
     ensure_support_dirs()
     job_file(job["id"]).write_text(json.dumps(job, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -346,6 +505,11 @@ def enrich_job(job: dict[str, Any]) -> dict[str, Any]:
     enriched["study_title"] = (record or {}).get("study", {}).get("title", job.get("study_id", ""))
     enriched["study_market"] = (record or {}).get("study", {}).get("market", "")
     enriched["schedule_enabled"] = (record or {}).get("schedule", {}).get("enabled", False)
+    enriched["stage_label"] = stage_label(enriched.get("stage_kind", ""))
+    stage_total = int(enriched.get("pipeline_stage_total", 0) or 0)
+    stage_index = int(enriched.get("pipeline_stage_index", 0) or 0)
+    if stage_total and not enriched.get("pipeline_progress"):
+        enriched["pipeline_progress"] = f"{stage_index + 1}/{stage_total}"
     return enriched
 
 
@@ -365,19 +529,178 @@ def list_jobs_for_study(study_id: str) -> list[dict[str, Any]]:
     return [job for job in list_jobs() if job.get("study_id") == study_id]
 
 
+def priority_label(priority_score: int) -> str:
+    if priority_score >= 90:
+        return "urgent"
+    if priority_score >= 70:
+        return "high"
+    if priority_score >= 45:
+        return "normal"
+    return "low"
+
+
+def mode_requires_admin(mode: str) -> bool:
+    return mode in BROWSER_JOB_MODES or mode == "adaptive"
+
+
+def pipeline_stages_for_mode(resolved_mode: str) -> list[str]:
+    return list(PIPELINE_STAGE_SEQUENCE.get(resolved_mode, PIPELINE_STAGE_SEQUENCE["seeded"]))
+
+
+def stage_label(stage_kind: str) -> str:
+    return STAGE_LABELS.get(stage_kind, stage_kind or "unknown")
+
+
+def stage_lane(stage_kind: str) -> str:
+    return STAGE_QUEUE_LANE.get(stage_kind, "maintenance")
+
+
+def stage_priority_score(base_priority: int, stage_kind: str) -> int:
+    return max(1, min(int(base_priority) + int(STAGE_PRIORITY_OFFSET.get(stage_kind, 0)), 99))
+
+
+def choose_adaptive_mode(record: dict[str, Any]) -> tuple[str, str]:
+    foundation = record.get("data_foundation", {}) or {}
+    hot_refresh = foundation.get("hot_refresh", {}) or {}
+    if hot_refresh.get("selected_count", 0) > 0 and hot_refresh.get("recommended_mode") == "hot_threads":
+        return "hot_threads", "存在高价值 stale thread，优先增量刷新评论和热度。"
+    if foundation.get("comment_capture_state") in {"thread_only", "partial"}:
+        return "browser", "评论覆盖不足，优先做一次完整 thread 发现与 harvest。"
+    if foundation.get("freshness", {}).get("freshness_score", 0) < 70:
+        return "browser", "整体新鲜度偏低，优先做一次完整浏览器刷新。"
+    return "seeded", "当前没有热点 thread，先做轻量 seeded 重建。"
+
+
+def build_job_plan(record: dict[str, Any], requested_mode: str, trigger: str) -> dict[str, Any]:
+    foundation = record.get("data_foundation", {}) or {}
+    hot_refresh = foundation.get("hot_refresh", {}) or {}
+    comment_state = foundation.get("comment_capture_state", "thread_only")
+    freshness_score = int((foundation.get("freshness", {}) or {}).get("freshness_score", 0) or 0)
+
+    if requested_mode == "adaptive":
+        resolved_mode, strategy_reason = choose_adaptive_mode(record)
+    else:
+        resolved_mode = requested_mode
+        strategy_reason = "按用户指定模式执行。"
+
+    if resolved_mode == "hot_threads":
+        priority_score = 78
+        priority_score += min(int(hot_refresh.get("selected_count", 0) or 0), 12)
+        priority_score += min(int(hot_refresh.get("stale_candidate_count", 0) or 0), 8)
+        if comment_state != "full":
+            priority_score += 4
+    elif resolved_mode == "browser":
+        priority_score = 56
+        if comment_state != "full":
+            priority_score += 8
+        if freshness_score < 70:
+            priority_score += 6
+    else:
+        priority_score = 28
+        if freshness_score < 60:
+            priority_score += 4
+
+    if trigger == "manual":
+        priority_score += 6
+    elif trigger.startswith("retry:"):
+        priority_score += 4
+    elif trigger == "schedule":
+        priority_score += 1
+
+    priority_score = max(1, min(priority_score, 99))
+    pipeline_stages = pipeline_stages_for_mode(resolved_mode)
+    first_stage = pipeline_stages[0]
+    stage_score = stage_priority_score(priority_score, first_stage)
+    return {
+        "requested_mode": requested_mode,
+        "resolved_mode": resolved_mode,
+        "pipeline_stages": pipeline_stages,
+        "stage_kind": first_stage,
+        "stage_label": stage_label(first_stage),
+        "queue_lane": stage_lane(first_stage),
+        "base_priority_score": priority_score,
+        "priority_score": stage_score,
+        "priority_label": priority_label(stage_score),
+        "strategy_reason": strategy_reason,
+    }
+
+
+def active_jobs_for_study(study_id: str) -> list[dict[str, Any]]:
+    return [
+        job
+        for job in list_jobs_for_study(study_id)
+        if job.get("status") in {"queued", "running"}
+    ]
+
+
 def enqueue_job(study_id: str, mode: str, actor: dict[str, Any] | None, trigger: str = "manual") -> dict[str, Any]:
+    record = load_study_record(study_id)
+    if not record:
+        raise RuntimeError(f"Study not found: {study_id}")
+    plan = build_job_plan(record, mode, trigger)
+    active_jobs = active_jobs_for_study(study_id)
+    running_job = next((job for job in active_jobs if job.get("status") == "running"), None)
+    if running_job:
+        raise RuntimeError("job_already_running")
+    queued_job = next((job for job in active_jobs if job.get("status") == "queued"), None)
+    if queued_job:
+        should_upgrade = (
+            int(plan["priority_score"]) > int(queued_job.get("priority_score", 0) or 0)
+            or plan["resolved_mode"] != queued_job.get("resolved_mode")
+        )
+        if should_upgrade:
+            queued_job["requested_mode"] = plan["requested_mode"]
+            queued_job["mode"] = plan["resolved_mode"]
+            queued_job["resolved_mode"] = plan["resolved_mode"]
+            queued_job["pipeline_stages"] = plan["pipeline_stages"]
+            queued_job["stage_kind"] = plan["stage_kind"]
+            queued_job["stage_label"] = plan["stage_label"]
+            queued_job["pipeline_stage_index"] = 0
+            queued_job["pipeline_stage_total"] = len(plan["pipeline_stages"])
+            queued_job["pipeline_progress"] = f"1/{len(plan['pipeline_stages'])}"
+            queued_job["queue_lane"] = plan["queue_lane"]
+            queued_job["base_priority_score"] = plan["base_priority_score"]
+            queued_job["priority_score"] = plan["priority_score"]
+            queued_job["priority_label"] = plan["priority_label"]
+            queued_job["strategy_reason"] = plan["strategy_reason"]
+            queued_job["trigger"] = trigger
+            queued_job["actor_id"] = (actor or {}).get("id", "system")
+            queued_job["actor_role"] = (actor or {}).get("role", "system")
+            queued_job["updated_at"] = now_iso()
+            save_job(queued_job)
+            queued_job["queue_action"] = "upgraded"
+            return queued_job
+        queued_job["queue_action"] = "coalesced"
+        return queued_job
+
     job = {
         "id": f"job-{uuid.uuid4().hex[:10]}",
         "study_id": study_id,
-        "mode": mode,
+        "pipeline_id": f"pipe-{uuid.uuid4().hex[:10]}",
+        "requested_mode": plan["requested_mode"],
+        "mode": plan["resolved_mode"],
+        "resolved_mode": plan["resolved_mode"],
+        "pipeline_stages": plan["pipeline_stages"],
+        "stage_kind": plan["stage_kind"],
+        "stage_label": plan["stage_label"],
+        "pipeline_stage_index": 0,
+        "pipeline_stage_total": len(plan["pipeline_stages"]),
+        "pipeline_progress": f"1/{len(plan['pipeline_stages'])}",
+        "queue_lane": plan["queue_lane"],
+        "base_priority_score": plan["base_priority_score"],
+        "priority_score": plan["priority_score"],
+        "priority_label": plan["priority_label"],
+        "strategy_reason": plan["strategy_reason"],
         "trigger": trigger,
         "status": "queued",
         "actor_id": (actor or {}).get("id", "system"),
         "actor_role": (actor or {}).get("role", "system"),
         "created_at": now_iso(),
+        "updated_at": now_iso(),
         "started_at": None,
         "finished_at": None,
         "error": None,
+        "queue_action": "queued",
     }
     save_job(job)
     return job
@@ -387,10 +710,77 @@ def has_active_job(study_id: str) -> bool:
     return any(job.get("status") in {"queued", "running"} and job.get("study_id") == study_id for job in list_jobs_for_study(study_id))
 
 
-def attach_study_runtime(record: dict[str, Any], input_path: Path) -> dict[str, Any]:
+def queued_job_sort_key(job: dict[str, Any]) -> tuple[int, int, str]:
+    lane = job.get("queue_lane", "maintenance")
+    lane_rank = QUEUE_LANE_ORDER.get(lane, 99)
+    priority = int(job.get("priority_score", 0) or 0)
+    return (lane_rank, -priority, job.get("created_at", ""))
+
+
+def next_stage_job(completed_job: dict[str, Any]) -> dict[str, Any] | None:
+    stages = list(completed_job.get("pipeline_stages") or [])
+    if not stages:
+        return None
+    current_index = int(completed_job.get("pipeline_stage_index", 0) or 0)
+    next_index = current_index + 1
+    if next_index >= len(stages):
+        return None
+
+    stage_kind = stages[next_index]
+    base_priority = int(completed_job.get("base_priority_score", completed_job.get("priority_score", 0)) or 0)
+    score = stage_priority_score(base_priority, stage_kind)
+    return {
+        "id": f"job-{uuid.uuid4().hex[:10]}",
+        "study_id": completed_job["study_id"],
+        "pipeline_id": completed_job.get("pipeline_id") or f"pipe-{uuid.uuid4().hex[:10]}",
+        "requested_mode": completed_job.get("requested_mode", completed_job.get("resolved_mode", "seeded")),
+        "mode": completed_job.get("resolved_mode", completed_job.get("mode", "seeded")),
+        "resolved_mode": completed_job.get("resolved_mode", completed_job.get("mode", "seeded")),
+        "pipeline_stages": stages,
+        "stage_kind": stage_kind,
+        "stage_label": stage_label(stage_kind),
+        "pipeline_stage_index": next_index,
+        "pipeline_stage_total": len(stages),
+        "pipeline_progress": f"{next_index + 1}/{len(stages)}",
+        "queue_lane": stage_lane(stage_kind),
+        "base_priority_score": base_priority,
+        "priority_score": score,
+        "priority_label": priority_label(score),
+        "strategy_reason": completed_job.get("strategy_reason", ""),
+        "trigger": f"followup:{completed_job.get('stage_kind', 'pipeline')}",
+        "status": "queued",
+        "actor_id": "system",
+        "actor_role": "system",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+        "started_at": None,
+        "finished_at": None,
+        "error": None,
+        "queue_action": "pipeline_follow_up",
+        "parent_job_id": completed_job.get("id"),
+    }
+
+
+def attach_study_runtime(
+    record: dict[str, Any],
+    input_path: Path,
+    entity_paths: dict[str, Path] | None = None,
+    entity_manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     config = build_reddit_config(record["draft"])
     config_path = write_study_config(record["id"], config)
     payload_json, payload_js = write_study_payload_files(record["id"], record["payload"])
+    entity_root = study_entity_root(record["id"])
+    raw_output = study_raw_file(record["id"])
+    discovered_output = raw_output.with_name(f"{raw_output.stem}_discovered{raw_output.suffix or '.jsonl'}")
+    entity_paths = entity_paths or {
+        "manifest": study_entity_file(record["id"], "manifest"),
+        "threads": study_entity_file(record["id"], "threads"),
+        "thread_snapshots": study_entity_file(record["id"], "thread_snapshots"),
+        "comments": study_entity_file(record["id"], "comments"),
+        "comment_snapshots": study_entity_file(record["id"], "comment_snapshots"),
+        "signals": study_entity_file(record["id"], "signals"),
+    }
     record["source"] = {
         "type": "seeded_jsonl",
         "input_path": str(input_path),
@@ -402,22 +792,107 @@ def attach_study_runtime(record: dict[str, Any], input_path: Path) -> dict[str, 
         "config_path": str(config_path),
         "payload_json_path": str(payload_json),
         "payload_js_path": str(payload_js),
-        "raw_output_path": str(study_raw_file(record["id"])),
+        "raw_output_path": str(raw_output),
+        "discovery_output_path": str(discovered_output),
         "report_output_path": str(study_report_file(record["id"])),
+        "entity_root_path": str(entity_root),
+        "manifest_path": str(entity_paths["manifest"]),
+        "threads_path": str(entity_paths["threads"]),
+        "thread_snapshots_path": str(entity_paths["thread_snapshots"]),
+        "comments_path": str(entity_paths["comments"]),
+        "comment_snapshots_path": str(entity_paths["comment_snapshots"]),
+        "signals_path": str(entity_paths["signals"]),
     }
+    record["data_foundation"] = entity_manifest or load_json_file(entity_paths["manifest"], {})
     record["updated_at"] = now_iso()
     return record
 
 
 def materialize_record(record: dict[str, Any], input_path: Path) -> dict[str, Any]:
-    payload = build_dataset(
-        input_path,
+    records = read_jsonl(input_path)
+    entity_bundle, entity_paths = build_and_write_store(input_path, record["id"], study_entity_root(record["id"]))
+    config = load_study_config(record)
+    entity_bundle = attach_hot_refresh_summary(entity_bundle, config)
+    entity_paths["manifest"].write_text(
+        json.dumps(entity_bundle["manifest"], ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    payload = build_dataset_from_records(
+        records,
         record["study"]["title"],
         record["study"]["market"],
         record["study"].get("time_window", "近 30 天"),
+        entity_bundle=entity_bundle,
     )
     record["payload"] = payload
-    return attach_study_runtime(record, input_path)
+    return attach_study_runtime(
+        record,
+        input_path,
+        entity_paths=entity_paths,
+        entity_manifest=entity_bundle["manifest"],
+    )
+
+
+def discovery_output_path(record: dict[str, Any]) -> Path:
+    artifact_path = record.get("artifacts", {}).get("discovery_output_path")
+    if artifact_path:
+        return Path(artifact_path)
+    raw_output = Path(record.get("artifacts", {}).get("raw_output_path") or study_raw_file(record["id"]))
+    return raw_output.with_name(f"{raw_output.stem}_discovered{raw_output.suffix or '.jsonl'}")
+
+
+def run_discover_stage(record: dict[str, Any], continue_on_error: bool = True) -> Path:
+    config_path = record.get("source", {}).get("browser_config_path") or record.get("artifacts", {}).get("config_path")
+    output_path = discovery_output_path(record)
+    if not config_path:
+        raise RuntimeError("Study is missing browser config path.")
+
+    command = [
+        sys.executable,
+        "scripts/discover_threads.py",
+        "--config",
+        config_path,
+        "--output",
+        str(output_path),
+    ]
+    if continue_on_error:
+        command.append("--continue-on-error")
+    subprocess.run(command, check=True, cwd=str(SERVER_ROOT))
+    return output_path
+
+
+def run_harvest_stage(record: dict[str, Any], continue_on_error: bool = True) -> Path:
+    config_path = record.get("source", {}).get("browser_config_path") or record.get("artifacts", {}).get("config_path")
+    raw_output_path = record.get("artifacts", {}).get("raw_output_path")
+    discovered_path = discovery_output_path(record)
+    if not config_path or not raw_output_path:
+        raise RuntimeError("Study is missing harvest artifact paths.")
+    if not discovered_path.exists():
+        raise RuntimeError("Discovery output missing for harvest stage.")
+
+    config = load_json_file(Path(config_path), {})
+    command = [
+        sys.executable,
+        "scripts/harvest_threads.py",
+        "--input",
+        str(discovered_path),
+        "--output",
+        raw_output_path,
+        "--max-comments",
+        str(int(config.get("thread_max_comments", 40))),
+        "--expand-rounds",
+        str(int(config.get("thread_expand_rounds", 2))),
+        "--scroll-rounds",
+        str(int(config.get("thread_scroll_rounds", 3))),
+        "--delay-seconds",
+        str(float(config.get("thread_delay_seconds", 1.0))),
+        "--browser-wait",
+        str(float(config.get("browser_wait_seconds", 15.0))),
+    ]
+    if continue_on_error:
+        command.append("--continue-on-error")
+    subprocess.run(command, check=True, cwd=str(SERVER_ROOT))
+    return Path(raw_output_path)
 
 
 def run_browser_rebuild(record: dict[str, Any]) -> Path:
@@ -426,13 +901,44 @@ def run_browser_rebuild(record: dict[str, Any]) -> Path:
     report_output_path = record.get("artifacts", {}).get("report_output_path")
     if not config_path or not raw_output_path or not report_output_path:
         raise RuntimeError("Study is missing browser config or artifact paths.")
+    discovered_path = discovery_output_path(record)
 
     command = [
-        "python3",
-        "scripts/reddit_browser_pipeline.py",
+        sys.executable,
+        "scripts/reddit_thread_pipeline.py",
         "--config",
         config_path,
         "--raw-output",
+        raw_output_path,
+        "--report-output",
+        report_output_path,
+        "--discovery-output",
+        str(discovered_path),
+        "--continue-on-error",
+    ]
+    subprocess.run(command, check=True, cwd=str(SERVER_ROOT))
+    return Path(raw_output_path)
+
+
+def run_hot_thread_rebuild(record: dict[str, Any]) -> Path:
+    config_path = record.get("source", {}).get("browser_config_path") or record.get("artifacts", {}).get("config_path")
+    raw_output_path = record.get("artifacts", {}).get("raw_output_path")
+    report_output_path = record.get("artifacts", {}).get("report_output_path")
+    entity_root_path = record.get("artifacts", {}).get("entity_root_path")
+    input_path = record.get("source", {}).get("input_path")
+    if not config_path or not raw_output_path or not report_output_path or not entity_root_path or not input_path:
+        raise RuntimeError("Study is missing hot-thread refresh paths.")
+
+    command = [
+        sys.executable,
+        "scripts/refresh_hot_threads.py",
+        "--config",
+        config_path,
+        "--entity-root",
+        entity_root_path,
+        "--input",
+        input_path,
+        "--output",
         raw_output_path,
         "--report-output",
         report_output_path,
@@ -449,23 +955,70 @@ def process_job(job: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"Study not found: {study_id}")
 
     input_path = Path(record.get("source", {}).get("input_path") or str(DEFAULT_INPUT))
-    if job.get("mode") == "browser":
-        input_path = run_browser_rebuild(record)
-        record.setdefault("source", {})["type"] = "browser_reddit"
-        record["source"]["input_path"] = str(input_path)
+    stage_kind = job.get("stage_kind") or job.get("mode")
 
-    record = materialize_record(record, input_path)
-    record["schedule"]["last_run_at"] = now_iso()
-    if record["schedule"].get("enabled"):
-        interval = int(record["schedule"].get("interval_hours", 24) or 24)
-        record["schedule"]["next_run_at"] = (datetime.now() + timedelta(hours=interval)).isoformat(timespec="seconds")
-    save_study_record(record)
-    return record
+    if stage_kind == "discover":
+        discovered_path = run_discover_stage(record, continue_on_error=True)
+        record.setdefault("source", {})["last_discovery_at"] = now_iso()
+        record.setdefault("artifacts", {})["discovery_output_path"] = str(discovered_path)
+        save_study_record(record)
+        return record
+
+    if stage_kind == "harvest":
+        input_path = run_harvest_stage(record, continue_on_error=True)
+        record.setdefault("source", {})["type"] = "browser_reddit_thread_pipeline"
+        record["source"]["input_path"] = str(input_path)
+        record["source"]["last_harvest_at"] = now_iso()
+        save_study_record(record)
+        return record
+
+    if stage_kind == "refresh_hot":
+        input_path = run_hot_thread_rebuild(record)
+        record.setdefault("source", {})["type"] = "browser_reddit_thread_pipeline"
+        record["source"]["input_path"] = str(input_path)
+        record["source"]["last_hot_refresh_at"] = now_iso()
+        save_study_record(record)
+        return record
+
+    if stage_kind == "rebuild_aggregates":
+        record = materialize_record(record, input_path)
+        record["schedule"]["last_run_at"] = now_iso()
+        if record["schedule"].get("enabled"):
+            interval = int(record["schedule"].get("interval_hours", 24) or 24)
+            record["schedule"]["next_run_at"] = (datetime.now() + timedelta(hours=interval)).isoformat(timespec="seconds")
+        save_study_record(record)
+        return record
+
+    if stage_kind == "publish_brief":
+        publication = {
+            "published_at": now_iso(),
+            "lead_package": record.get("payload", {}).get("weeklyBrief", {}).get("leadPackage", ""),
+            "headline": record.get("payload", {}).get("summary", {}).get("headline", ""),
+            "pipeline_id": job.get("pipeline_id"),
+            "source_mode": job.get("resolved_mode", job.get("mode")),
+        }
+        record["publication"] = publication
+        record["updated_at"] = publication["published_at"]
+        save_study_record(record)
+        return record
+
+    raise RuntimeError(f"Unsupported stage: {stage_kind}")
+
+
+def enqueue_follow_up_job(completed_job: dict[str, Any]) -> dict[str, Any] | None:
+    follow_up = next_stage_job(completed_job)
+    if not follow_up:
+        return None
+    save_job(follow_up)
+    return follow_up
 
 
 def worker_loop(stop_event: threading.Event) -> None:
     while not stop_event.is_set():
-        queued = [job for job in list_jobs() if job.get("status") == "queued"]
+        queued = sorted(
+            [job for job in list_jobs() if job.get("status") == "queued"],
+            key=queued_job_sort_key,
+        )
         if not queued:
             time.sleep(1.0)
             continue
@@ -473,6 +1026,7 @@ def worker_loop(stop_event: threading.Event) -> None:
         job = queued[0]
         job["status"] = "running"
         job["started_at"] = now_iso()
+        job["updated_at"] = now_iso()
         save_job(job)
 
         try:
@@ -483,7 +1037,10 @@ def worker_loop(stop_event: threading.Event) -> None:
             job["status"] = "failed"
             job["finished_at"] = now_iso()
             job["error"] = str(error)
+        job["updated_at"] = now_iso()
         save_job(job)
+        if job["status"] == "completed":
+            enqueue_follow_up_job(job)
 
 
 def scheduler_loop(stop_event: threading.Event) -> None:
@@ -501,7 +1058,7 @@ def scheduler_loop(stop_event: threading.Event) -> None:
                 save_study_record(record)
                 continue
             if next_run <= now and not has_active_job(record["id"]):
-                enqueue_job(record["id"], schedule.get("mode", "seeded"), actor=None, trigger="schedule")
+                enqueue_job(record["id"], schedule.get("mode", "adaptive"), actor=None, trigger="schedule")
                 interval = int(schedule.get("interval_hours", 24) or 24)
                 record["schedule"]["next_run_at"] = (now + timedelta(hours=interval)).isoformat(timespec="seconds")
                 save_study_record(record)
@@ -882,9 +1439,69 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             return
 
         bundle = build_api_bundle(record["payload"])
+        entity_bundle = load_study_entity_bundle(study_id)
         suffix = "/" + "/".join(parts[1:]) if len(parts) > 1 else ""
         if suffix == "/dashboard":
             self.send_json(bundle["dashboard"])
+            return
+        if suffix == "/data-foundation":
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "manifest": entity_bundle.get("manifest", {}),
+                    "artifacts": record.get("artifacts", {}),
+                }
+            )
+            return
+        if suffix == "/threads":
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "manifest": entity_bundle.get("manifest", {}),
+                    "threads": entity_bundle.get("threads", []),
+                }
+            )
+            return
+        if suffix.startswith("/threads/"):
+            thread_id = suffix.split("/")[-1]
+            thread = next((item for item in entity_bundle.get("threads", []) if item.get("thread_id") == thread_id), None)
+            if not thread:
+                self.send_json({"error": "thread_not_found", "thread_id": thread_id}, status=404)
+                return
+            thread_snapshots = [item for item in entity_bundle.get("thread_snapshots", []) if item.get("thread_id") == thread_id]
+            comments = [item for item in entity_bundle.get("comments", []) if item.get("thread_id") == thread_id]
+            comment_ids = {item.get("comment_id") for item in comments}
+            comment_snapshots = [item for item in entity_bundle.get("comment_snapshots", []) if item.get("comment_id") in comment_ids]
+            signals = [item for item in entity_bundle.get("signals", []) if item.get("thread_id") == thread_id]
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "manifest": entity_bundle.get("manifest", {}),
+                    "thread": thread,
+                    "thread_snapshots": thread_snapshots,
+                    "comments": comments[:100],
+                    "comment_snapshots": comment_snapshots[:100],
+                    "signals": signals,
+                }
+            )
+            return
+        if suffix == "/comments":
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "manifest": entity_bundle.get("manifest", {}),
+                    "comments": entity_bundle.get("comments", [])[:200],
+                }
+            )
+            return
+        if suffix == "/signals":
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "manifest": entity_bundle.get("manifest", {}),
+                    "signals": entity_bundle.get("signals", []),
+                }
+            )
             return
         if suffix == "/segments":
             self.send_json(bundle["segments"])
@@ -911,6 +1528,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                     "artifacts": record.get("artifacts", {}),
                     "draft": record.get("draft", {}),
                     "schedule": record.get("schedule", {}),
+                    "data_foundation": record.get("data_foundation", {}),
                 }
             )
             return
@@ -922,6 +1540,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                     "jobs": [enrich_job(job) for job in list_jobs_for_study(study_id)[:50]],
                     "source": record.get("source", {}),
                     "artifacts": record.get("artifacts", {}),
+                    "data_foundation": record.get("data_foundation", {}),
                 }
             )
             return
@@ -965,8 +1584,8 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if not job:
                 self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
                 return
-            mode = job.get("mode", "seeded")
-            if mode == "browser" and not ensure_role(user, "admin"):
+            mode = job.get("requested_mode") or job.get("resolved_mode") or job.get("mode", "seeded")
+            if mode_requires_admin(mode) and not ensure_role(user, "admin"):
                 self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
                 return
             retried = enqueue_job(job.get("study_id", ""), mode, actor=user, trigger=f"retry:{job_id}")
@@ -987,6 +1606,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 return
             job["status"] = "canceled"
             job["finished_at"] = now_iso()
+            job["updated_at"] = now_iso()
             save_job(job)
             self.send_json({"canceled": True, "job": enrich_job(job)})
             return
@@ -1023,8 +1643,11 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if has_active_job(study_id):
                 self.send_json({"error": "job_already_active", "study_id": study_id}, status=409)
                 return
-            mode = payload.get("mode", "seeded")
-            if mode == "browser" and not ensure_role(user, "admin"):
+            mode = payload.get("mode", "adaptive")
+            if mode not in ALL_JOB_MODES:
+                self.send_json({"error": "invalid_mode", "mode": mode}, status=400)
+                return
+            if mode_requires_admin(mode) and not ensure_role(user, "admin"):
                 self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
                 return
             job = enqueue_job(study_id, mode, actor=user, trigger="manual")
@@ -1048,11 +1671,11 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 return
             interval = max(int(payload.get("interval_hours", 24) or 24), 1)
             enabled = bool(payload.get("enabled", False))
-            mode = payload.get("mode", "seeded")
-            if mode not in {"seeded", "browser"}:
+            mode = payload.get("mode", "adaptive")
+            if mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": mode}, status=400)
                 return
-            if mode == "browser" and not ensure_role(user, "admin"):
+            if mode_requires_admin(mode) and not ensure_role(user, "admin"):
                 self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
                 return
             start_now = bool(payload.get("start_now", False))
@@ -1104,6 +1727,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 "payload": record["payload"],
                 "artifacts": record.get("artifacts", {}),
                 "source": record.get("source", {}),
+                "data_foundation": record.get("data_foundation", {}),
             },
             status=201,
         )

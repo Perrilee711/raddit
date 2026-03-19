@@ -5,6 +5,15 @@ const fallbackData = {
     dateRange: "近 30 天",
     updatedAt: "今天 09:20",
     confidence: "High",
+    threadCount: 564,
+    commentCount: 0,
+    commentCoverageRate: 0,
+    hotRefresh: {
+      candidate_count: 6,
+      selected_count: 6,
+      stale_candidate_count: 4,
+      recommended_mode: "hot_threads",
+    },
   },
   summary: {
     headline: "围绕“已出单但履约混乱”的卖家建立第一增长抓手，优先推出 3PL & Fulfillment Audit。",
@@ -247,6 +256,14 @@ const fallbackData = {
       "继续追踪 shipping delays 和 3PL 相关信号增速",
     ],
   },
+  commentIntelligence: {
+    overall: {
+      comment_confirmation_score: 0,
+      recommendation_density: 0,
+      objection_density: 0,
+    },
+    by_pain: {},
+  },
 };
 
 let appData = fallbackData;
@@ -266,12 +283,12 @@ let studyJobs = [];
 let allJobs = [];
 let currentSchedule = {
   enabled: false,
-  mode: "seeded",
+  mode: "adaptive",
   interval_hours: 24,
   last_run_at: null,
   next_run_at: null,
 };
-let refreshMode = "seeded";
+let refreshMode = "adaptive";
 let pollTimer = null;
 let lastKnownActiveJobCount = 0;
 let lastJobCompletionKey = "";
@@ -309,6 +326,25 @@ function formatDateTime(value, empty = "未运行") {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function modeLabel(value) {
+  const labels = {
+    adaptive: "adaptive",
+    seeded: "seeded",
+    browser: "browser",
+    hot_threads: "hot_threads",
+  };
+  return labels[value] || value || "unknown";
+}
+
+function laneLabel(value) {
+  const labels = {
+    realtime: "实时优先队列",
+    discovery: "发现队列",
+    maintenance: "维护队列",
+  };
+  return labels[value] || "未分配";
 }
 
 function activeJobCount() {
@@ -453,8 +489,10 @@ function renderStudyRail() {
           <div class="study-meta">
             <span class="mini-pill">${study.lead_package || "No package yet"}</span>
             <span class="mini-pill">${study.primary_goal || "未设置目标"}</span>
-            <span class="mini-pill">${study.schedule?.enabled ? `Auto ${study.schedule.interval_hours}h` : "Manual only"}</span>
+            <span class="mini-pill">${study.schedule?.enabled ? `Auto ${study.schedule.interval_hours}h · ${modeLabel(study.schedule.mode)}` : "Manual only"}</span>
             ${study.active_job_count ? `<span class="mini-pill up">${study.active_job_count} running</span>` : ""}
+            ${study.active_queue_lane ? `<span class="mini-pill">${laneLabel(study.active_queue_lane)}</span>` : ""}
+            ${study.active_priority_label ? `<span class="mini-pill warn">${study.active_priority_label}</span>` : ""}
           </div>
         </div>
       `
@@ -491,14 +529,22 @@ function renderTabs(activeId) {
   tabs.innerHTML = visibleViews
     .map(
       (view) =>
-        `<a href="#" class="${view.id === activeId ? "active" : ""}" data-view="${view.id}">${view.label}</a>`
+        `<button type="button" class="${view.id === activeId ? "active" : ""}" data-view="${view.id}">${view.label}</button>`
     )
     .join("");
 }
 
+function metricClassForLabel(metric) {
+  const label = `${metric.label} ${metric.note || ""}`.toLowerCase();
+  if (label.includes("opportunity")) return "metric metric-opportunity";
+  if (label.includes("packaging")) return "metric metric-packaging";
+  if (label.includes("趋势") || label.includes("trend") || label.includes("+")) return "metric metric-trend";
+  return "metric";
+}
+
 function metricMarkup(metric) {
   return `
-    <div class="metric">
+    <div class="${metricClassForLabel(metric)}">
       <strong>${metric.value}</strong>
       <span>${metric.label}<br>${metric.note}</span>
     </div>
@@ -523,7 +569,10 @@ function segmentCardMarkup(segment) {
         <span class="mini-pill">Opportunity ${segment.opportunity}</span>
         <span class="mini-pill">Packaging ${segment.packaging}</span>
         <span class="mini-pill up">${segment.trend}</span>
+      </div>
+      <div class="kpi-line">
         <span class="mini-pill">${segment.recommendedProduct}</span>
+        <span class="mini-pill">${segment.actionMode}</span>
       </div>
     </div>
   `;
@@ -793,6 +842,12 @@ function trendSeriesMarkup() {
 }
 
 function renderDashboard() {
+  const activeStudySummary = studyList.find((study) => study.id === currentStudyId) || {};
+  const queueLaneSummary = activeStudySummary.queue_lane_summary || {};
+  const queueLaneMarkup = Object.entries(queueLaneSummary)
+    .filter(([, count]) => Number(count || 0) > 0)
+    .map(([lane, count]) => `<span class="mini-pill">${laneLabel(lane)} ${count}</span>`)
+    .join("");
   const sourceBreakdown = (appData.sourceBreakdown || [])
     .map((item) => `<div class="mini-row"><strong>${item.name}</strong><div class="small">${item.count} 条样本</div></div>`)
     .join("");
@@ -806,8 +861,9 @@ function renderDashboard() {
         .map(
           (job) => `
             <div class="job-row is-${job.status}">
-              <strong>${job.mode} · ${job.status}</strong>
-              <div class="small">触发：${job.trigger} · 创建：${formatDateTime(job.created_at, "刚刚")}</div>
+              <strong>${modeLabel(job.requested_mode || job.mode)} · ${job.stage_label || job.stage_kind || job.mode} · ${job.status}</strong>
+              <div class="small">进度：${job.pipeline_progress || "1/1"} · 触发：${job.trigger}</div>
+              <div class="small">车道：${laneLabel(job.queue_lane)} · 优先级：${job.priority_label || "normal"}${job.priority_score ? ` (${job.priority_score})` : ""}</div>
               <div class="small">完成：${formatDateTime(job.finished_at, "处理中")}</div>
             </div>
           `
@@ -909,7 +965,7 @@ function renderDashboard() {
           <div class="ops-stat">
             <div>
               <strong>${currentSchedule.enabled ? "已开启自动调度" : "尚未开启自动调度"}</strong>
-              <div class="small">模式：${currentSchedule.mode || "seeded"}</div>
+              <div class="small">模式：${modeLabel(currentSchedule.mode || "adaptive")}</div>
             </div>
             <div class="small">
               下次运行：${formatDateTime(currentSchedule.next_run_at, "未设置")}<br>
@@ -918,7 +974,29 @@ function renderDashboard() {
           </div>
           <div class="item">
             <strong>当前手动刷新模式</strong>
-            <div class="small">${refreshMode}</div>
+            <div class="small">${modeLabel(refreshMode)}</div>
+          </div>
+          <div class="item">
+            <strong>优先级编排</strong>
+            <div class="small">
+              当前主队列：${laneLabel(activeStudySummary.active_queue_lane)}<br>
+              请求模式：${modeLabel(activeStudySummary.active_requested_mode)} → 实际执行：${modeLabel(activeStudySummary.active_resolved_mode)}<br>
+              优先级：${activeStudySummary.active_priority_label || "normal"}${activeStudySummary.active_priority_score ? ` (${activeStudySummary.active_priority_score})` : ""}<br>
+              ${activeStudySummary.active_strategy_reason || "当前没有活跃任务。"}
+            </div>
+            ${queueLaneMarkup ? `<div class="kpi-line" style="margin-top:8px;">${queueLaneMarkup}</div>` : ""}
+          </div>
+          <div class="item">
+            <strong>数据新鲜度</strong>
+            <div class="small">
+              Freshness Score：${activeStudySummary.freshness_score ?? "N/A"}<br>
+              最后实体刷新：${formatDateTime(activeStudySummary.last_entity_refresh_at, "暂无")}<br>
+              评论状态：${activeStudySummary.comment_capture_state || "thread_only"}<br>
+              Build #${activeStudySummary.build_number ?? 0} · ${activeStudySummary.incremental_mode || "bootstrap"}<br>
+              新增 thread：${activeStudySummary.new_threads ?? 0} · 新增评论：${activeStudySummary.new_comments ?? 0}<br>
+              Hot candidates：${activeStudySummary.hot_thread_candidate_count ?? appData.study.hotRefresh?.candidate_count ?? 0} · 选中：${activeStudySummary.hot_thread_selected_count ?? appData.study.hotRefresh?.selected_count ?? 0}<br>
+              建议模式：${modeLabel(activeStudySummary.hot_thread_recommended_mode ?? appData.study.hotRefresh?.recommended_mode ?? "browser")}
+            </div>
           </div>
           <div class="job-list">${jobsMarkup}</div>
         </div>
@@ -934,8 +1012,24 @@ function renderDashboard() {
         </div>
         <div class="mini-list">${sourceBreakdown || `<div class="mini-row"><strong>暂无来源分布</strong></div>`}</div>
         <div class="item">
+          <strong>Thread / Comment 覆盖</strong>
+          <div class="small">
+            Thread：${appData.study.threadCount ?? 0} 条<br>
+            评论：${appData.study.commentCount ?? 0} 条<br>
+            覆盖率：${appData.study.commentCoverageRate ?? 0}%
+          </div>
+        </div>
+        <div class="item">
           <strong>高频关键词</strong>
           <div class="kpi-line">${keywordBreakdown || `<span class="mini-pill">暂无关键词</span>`}</div>
+        </div>
+        <div class="item">
+          <strong>评论驱动信号</strong>
+          <div class="small">
+            确认度：${appData.commentIntelligence?.overall?.comment_confirmation_score ?? 0}<br>
+            推荐密度：${appData.commentIntelligence?.overall?.recommendation_density ?? 0}<br>
+            异议密度：${appData.commentIntelligence?.overall?.objection_density ?? 0}
+          </div>
         </div>
         <div class="mini-list">
           ${(appData.opportunityDrivers || [])
@@ -946,6 +1040,7 @@ function renderDashboard() {
                   <div class="label">${driver.count} 条样本</div>
                   <strong>${driver.name} → ${driver.offer}</strong>
                   <div class="small">${driver.segment} · 高意向 ${driver.high_intent} 条 · Opportunity ${driver.opportunity_score}</div>
+                  <div class="small">确认度 ${driver.comment_confirmation_score ?? 0} · 推荐密度 ${driver.recommendation_density ?? 0} · 异议密度 ${driver.objection_density ?? 0}</div>
                 </div>
               `
             )
@@ -1050,8 +1145,10 @@ function renderStudySetup() {
           <label class="field">
             <span>运行模式</span>
             <select name="mode">
+              <option value="adaptive" ${currentSchedule.mode === "adaptive" ? "selected" : ""}>adaptive</option>
               <option value="seeded" ${currentSchedule.mode === "seeded" ? "selected" : ""}>seeded</option>
               <option value="browser" ${currentSchedule.mode === "browser" ? "selected" : ""}>browser</option>
+              <option value="hot_threads" ${currentSchedule.mode === "hot_threads" ? "selected" : ""}>hot_threads</option>
             </select>
           </label>
           <label class="field">
@@ -1148,7 +1245,15 @@ function renderSegments() {
 }
 
 function renderOperations() {
-  const visibleJobs = getVisibleOperationsJobs();
+  const visibleJobs = getVisibleOperationsJobs().slice().sort((left, right) => {
+    const statusRank = { running: 0, queued: 1, failed: 2, completed: 3, canceled: 4 };
+    const laneRank = { realtime: 0, discovery: 1, maintenance: 2 };
+    const statusDiff = (statusRank[left.status] ?? 99) - (statusRank[right.status] ?? 99);
+    if (statusDiff !== 0) return statusDiff;
+    const laneDiff = (laneRank[left.queue_lane] ?? 99) - (laneRank[right.queue_lane] ?? 99);
+    if (laneDiff !== 0) return laneDiff;
+    return Number(right.priority_score || 0) - Number(left.priority_score || 0);
+  });
   if (!selectedJobId && visibleJobs.length) {
     selectedJobId = visibleJobs[0].id;
   }
@@ -1164,6 +1269,14 @@ function renderOperations() {
     failed: allJobs.filter((job) => job.status === "failed").length,
     canceled: allJobs.filter((job) => job.status === "canceled").length,
   };
+  const laneSummary = allJobs.reduce(
+    (summary, job) => {
+      const lane = job.queue_lane || "maintenance";
+      summary[lane] = (summary[lane] || 0) + 1;
+      return summary;
+    },
+    { realtime: 0, discovery: 0, maintenance: 0 }
+  );
 
   const scheduleCards = studyList
     .map(
@@ -1171,11 +1284,18 @@ function renderOperations() {
         <div class="mini-row ${study.active_job_count ? "is-running" : study.schedule?.enabled ? "is-completed" : ""}">
           <strong>${study.title}</strong>
           <div class="small">${study.market}</div>
-          <div class="small">调度：${study.schedule?.enabled ? `开启 / ${study.schedule.interval_hours}h / ${study.schedule.mode}` : "未开启"}</div>
+          <div class="small">调度：${study.schedule?.enabled ? `开启 / ${study.schedule.interval_hours}h / ${modeLabel(study.schedule.mode)}` : "未开启"}</div>
           <div class="small">下次运行：${formatDateTime(study.schedule?.next_run_at, "未设置")}</div>
+          ${
+            study.active_queue_lane
+              ? `<div class="small">当前编排：${laneLabel(study.active_queue_lane)} · ${study.active_priority_label || "normal"}${study.active_priority_score ? ` (${study.active_priority_score})` : ""}</div>`
+              : ""
+          }
           <div class="cta">
+            <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="adaptive">跑 adaptive</button>
             <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="seeded">跑 seeded</button>
             <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="browser">跑 browser</button>
+            <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="hot_threads">跑 hot_threads</button>
             <button type="button" class="button secondary" data-toggle-schedule-study-id="${study.id}">
               ${study.schedule?.enabled ? "暂停调度" : "启用调度"}
             </button>
@@ -1199,8 +1319,15 @@ function renderOperations() {
       (job) => `
         <div class="job-row is-${job.status} ${selectedJobId === job.id ? "is-selected" : ""}" data-open-job-id="${job.id}">
           <strong>${job.study_title || job.study_id}</strong>
-          <div class="small">${job.mode} · ${job.status} · ${job.trigger}</div>
+          <div class="small">${modeLabel(job.requested_mode || job.mode)} → ${modeLabel(job.resolved_mode || job.mode)} · ${job.status} · ${job.trigger}</div>
+          <div class="small">阶段：${job.stage_label || job.stage_kind || job.mode} · 进度：${job.pipeline_progress || "1/1"} · Pipeline：${job.pipeline_id || "-"}</div>
+          <div class="kpi-line">
+            <span class="mini-pill">${laneLabel(job.queue_lane)}</span>
+            <span class="mini-pill ${job.priority_label === "urgent" || job.priority_label === "high" ? "up" : job.priority_label === "low" ? "warn" : ""}">${job.priority_label || "normal"}${job.priority_score ? ` ${job.priority_score}` : ""}</span>
+            ${job.queue_action ? `<span class="mini-pill">${job.queue_action}</span>` : ""}
+          </div>
           <div class="small">创建：${formatDateTime(job.created_at, "刚刚")} · 完成：${formatDateTime(job.finished_at, "处理中")}</div>
+          ${job.strategy_reason ? `<div class="small">策略：${job.strategy_reason}</div>` : ""}
           ${job.error ? `<div class="small">错误：${job.error}</div>` : ""}
         </div>
       `
@@ -1223,6 +1350,9 @@ function renderOperations() {
             <div class="item"><strong>Completed</strong><div class="small">${statusSummary.completed}</div></div>
             <div class="item"><strong>Failed</strong><div class="small">${statusSummary.failed}</div></div>
             <div class="item"><strong>Canceled</strong><div class="small">${statusSummary.canceled}</div></div>
+            <div class="item"><strong>${laneLabel("realtime")}</strong><div class="small">${laneSummary.realtime}</div></div>
+            <div class="item"><strong>${laneLabel("discovery")}</strong><div class="small">${laneSummary.discovery}</div></div>
+            <div class="item"><strong>${laneLabel("maintenance")}</strong><div class="small">${laneSummary.maintenance}</div></div>
           </div>
         </div>
       </div>
@@ -1251,8 +1381,13 @@ function renderOperations() {
               selectedJob
                 ? `
                   <div class="stack">
-                    <div class="item"><strong>${selectedJob.study_title}</strong><div class="small">${selectedJob.mode} · ${selectedJob.status}</div></div>
+                    <div class="item"><strong>${selectedJob.study_title}</strong><div class="small">${modeLabel(selectedJob.requested_mode || selectedJob.mode)} → ${modeLabel(selectedJob.resolved_mode || selectedJob.mode)} · ${selectedJob.status}</div></div>
+                    <div class="item"><strong>阶段进度</strong><div class="small">${selectedJob.stage_label || selectedJob.stage_kind || selectedJob.mode} · ${selectedJob.pipeline_progress || "1/1"}</div></div>
+                    <div class="item"><strong>Pipeline</strong><div class="small">${selectedJob.pipeline_id || "-"}</div></div>
+                    <div class="item"><strong>队列车道</strong><div class="small">${laneLabel(selectedJob.queue_lane)} · ${selectedJob.priority_label || "normal"}${selectedJob.priority_score ? ` (${selectedJob.priority_score})` : ""}</div></div>
                     <div class="item"><strong>触发方式</strong><div class="small">${selectedJob.trigger}</div></div>
+                    ${selectedJob.strategy_reason ? `<div class="item"><strong>编排原因</strong><div class="small">${selectedJob.strategy_reason}</div></div>` : ""}
+                    ${selectedJob.queue_action ? `<div class="item"><strong>入队动作</strong><div class="small">${selectedJob.queue_action}</div></div>` : ""}
                     <div class="item"><strong>创建时间</strong><div class="small">${formatDateTime(selectedJob.created_at, "刚刚")}</div></div>
                     <div class="item"><strong>开始时间</strong><div class="small">${formatDateTime(selectedJob.started_at, "未开始")}</div></div>
                     <div class="item"><strong>结束时间</strong><div class="small">${formatDateTime(selectedJob.finished_at, "处理中")}</div></div>
@@ -1577,7 +1712,7 @@ function bindEvents() {
     const runStudyButton = event.target.closest("[data-run-study-id]");
     if (runStudyButton) {
       const studyId = runStudyButton.dataset.runStudyId;
-      const mode = runStudyButton.dataset.runMode || "seeded";
+      const mode = runStudyButton.dataset.runMode || "adaptive";
       runStudyButton.disabled = true;
       try {
         await rebuildStudy(studyId, mode);
@@ -1586,7 +1721,7 @@ function bindEvents() {
         await pollCurrentStudy();
       } catch (error) {
         console.warn("Run study failed:", error);
-        showToast("Study 启动失败", "请检查权限或 browser 模式环境。", "error");
+        showToast("Study 启动失败", "请检查权限或 adaptive / browser / hot_threads 模式环境。", "error");
       } finally {
         runStudyButton.disabled = false;
       }
@@ -1602,7 +1737,7 @@ function bindEvents() {
       try {
         await updateScheduleForStudy({
           study_id: studyId,
-          mode: study.schedule?.mode || "seeded",
+          mode: study.schedule?.mode || "adaptive",
           interval_hours: study.schedule?.interval_hours || 24,
           enabled: !study.schedule?.enabled,
           start_now: false,
@@ -1635,7 +1770,7 @@ function bindEvents() {
       refreshButton.textContent = "刷新中...";
       try {
         await rebuildStudy(currentStudyId, refreshMode);
-        showToast("已提交刷新任务", `${currentStudyId} 已按 ${refreshMode} 模式进入队列。`, "warn");
+        showToast("已提交刷新任务", `${currentStudyId} 已按 ${modeLabel(refreshMode)} 模式进入队列。`, "warn");
         await new Promise((resolve) => setTimeout(resolve, 1600));
         await refreshStudyList();
         await hydrateStudy(currentStudyId);
@@ -1880,6 +2015,7 @@ async function hydrateStudy(studyId) {
   }
   try {
     currentSchedule = await loadScheduleForStudy(studyId);
+    refreshMode = currentSchedule.mode || refreshMode;
   } catch (error) {
     console.warn("Schedule fallback:", error);
   }
