@@ -281,6 +281,7 @@ let studyList = [];
 let authUser = null;
 let studyJobs = [];
 let allJobs = [];
+let studySetupState = null;
 let currentSchedule = {
   enabled: false,
   mode: "adaptive",
@@ -297,6 +298,29 @@ let selectedJobId = null;
 let selectedTrendViewKey = null;
 let selectedTrendSeriesId = "all";
 let apiAvailable = false;
+
+const DEFAULT_STUDY_KEYWORD_GROUPS = [
+  {
+    id: "fulfillment",
+    label: "履约 / 3PL",
+    keywords: ["3PL", "fulfillment service", "fulfillment partner", "slow shipping", "shipping times"],
+  },
+  {
+    id: "supplier",
+    label: "Supplier / Sourcing",
+    keywords: ["private supplier", "sourcing agent", "China supplier", "supplier issues", "private agent"],
+  },
+  {
+    id: "risk",
+    label: "Risk / QC",
+    keywords: ["inspection", "quality issues", "wrong item", "fake supplier", "refunds"],
+  },
+  {
+    id: "cost",
+    label: "Cost / Margin",
+    keywords: ["margin", "profit margin", "landed cost", "shipping costs", "cost down"],
+  },
+];
 
 const views = [
   { id: "dashboard", label: "Dashboard" },
@@ -398,6 +422,110 @@ function primeJobNotificationState() {
   if (latestFinished) {
     lastJobCompletionKey = `${latestFinished.id}:${latestFinished.finished_at || ""}${latestFinished.status === "failed" ? ":failed" : ""}`;
   }
+}
+
+function normalizeUniqueList(items) {
+  const source = Array.isArray(items) ? items : String(items || "").split(/[\n,，;；]+/);
+  const seen = new Set();
+  const normalized = [];
+  source.forEach((item) => {
+    const text = String(item || "").trim();
+    if (!text) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    normalized.push(text);
+  });
+  return normalized;
+}
+
+function mergeUniqueList(base, additions) {
+  return normalizeUniqueList([...(base || []), ...(additions || [])]);
+}
+
+function estimateStudySetupCost(subreddits, keywords) {
+  const queryCount = (subreddits?.length || 0) * (keywords?.length || 0);
+  if (queryCount >= 60) {
+    return { level: "high", note: "抓取量偏高，建议先验证这批词再继续扩展。", query_count: queryCount };
+  }
+  if (queryCount >= 24) {
+    return { level: "medium", note: "抓取量适中，适合首轮验证。", query_count: queryCount };
+  }
+  return { level: "low", note: "抓取量较轻，适合快速首跑。", query_count: queryCount };
+}
+
+function defaultStudySetupFields() {
+  return {
+    title: "美国 / Dropshipping 供应链服务 / 履约与 supplier 问题",
+    market: "美国 dropshipping",
+    business_line: studyTemplate.business_lines?.[0] || "Dropshipping 供应链服务",
+    region: studyTemplate.regions?.[0] || "美国",
+    target_customer: "已出单但履约混乱的卖家",
+    primary_goal: studyTemplate.primary_goals?.[0] || "选客群 + 定产品包装",
+    problem_space: "履约与发货、private supplier、3PL 切换、shipping delays、退款压力",
+    time_window: "近 30 天",
+  };
+}
+
+function buildStudySetupState(fields, draft) {
+  const study = draft?.study || {};
+  const nextFields = {
+    ...defaultStudySetupFields(),
+    ...fields,
+    ...study,
+  };
+  const recommendedKeywords = normalizeUniqueList(
+    draft?.recommended_keywords || draft?.recommendedKeywords || draft?.recommended_keywords || []
+  );
+  const recommendedSubreddits = normalizeUniqueList(
+    draft?.recommended_subreddits || draft?.recommendedSubreddits || []
+  );
+  return {
+    fields: nextFields,
+    recommended_keywords: recommendedKeywords,
+    recommended_subreddits: recommendedSubreddits,
+    recommended_keyword_groups:
+      draft?.recommended_keyword_groups || draft?.recommendedKeywordGroups || DEFAULT_STUDY_KEYWORD_GROUPS,
+    suggested_first_run_mode: draft?.suggested_first_run_mode || "browser",
+    suggested_schedule_mode: draft?.suggested_schedule_mode || "adaptive",
+    suggested_interval_hours: draft?.suggested_interval_hours || 24,
+    crawl_cost_estimate:
+      draft?.crawl_cost_estimate || estimateStudySetupCost(recommendedSubreddits, recommendedKeywords),
+    keyword_input: "",
+    subreddit_input: "",
+  };
+}
+
+function ensureStudySetupState() {
+  if (!studySetupState) {
+    const fields = defaultStudySetupFields();
+    const draft = latestStudyDraft || buildLocalStudyDraft(fields);
+    studySetupState = buildStudySetupState(fields, draft);
+    latestStudyDraft = draft;
+  }
+  return studySetupState;
+}
+
+function applyDraftToStudySetup(draft, options = {}) {
+  const { preserveFields = true } = options;
+  const existing = ensureStudySetupState();
+  const fields = preserveFields ? existing.fields : { ...existing.fields, ...(draft?.study || {}) };
+  studySetupState = {
+    ...buildStudySetupState(fields, draft),
+    fields,
+    keyword_input: existing.keyword_input || "",
+    subreddit_input: existing.subreddit_input || "",
+  };
+  latestStudyDraft = draft;
+}
+
+function currentStudySetupPayload() {
+  const state = ensureStudySetupState();
+  return {
+    ...state.fields,
+    recommended_keywords: state.recommended_keywords,
+    recommended_subreddits: state.recommended_subreddits,
+  };
 }
 
 async function apiFetchJson(url, options = {}) {
@@ -1052,22 +1180,57 @@ function renderDashboard() {
 }
 
 function renderStudySetup() {
+  const state = ensureStudySetupState();
   const businessLineOptions = studyTemplate.business_lines
-    .map((item) => `<option value="${item}">${item}</option>`)
+    .map((item) => `<option value="${item}" ${state.fields.business_line === item ? "selected" : ""}>${item}</option>`)
     .join("");
   const regionOptions = studyTemplate.regions
-    .map((item) => `<option value="${item}">${item}</option>`)
+    .map((item) => `<option value="${item}" ${state.fields.region === item ? "selected" : ""}>${item}</option>`)
     .join("");
   const goalOptions = studyTemplate.primary_goals
-    .map((item) => `<option value="${item}">${item}</option>`)
+    .map((item) => `<option value="${item}" ${state.fields.primary_goal === item ? "selected" : ""}>${item}</option>`)
     .join("");
+  const keywordChips = state.recommended_keywords.length
+    ? state.recommended_keywords
+        .map(
+          (keyword) => `
+            <span class="tag-chip">
+              ${keyword}
+              <button type="button" aria-label="移除关键词 ${keyword}" data-remove-keyword="${keyword}">×</button>
+            </span>
+          `
+        )
+        .join("")
+    : `<span class="small">还没有推荐关键词，先点“刷新推荐关键词”。</span>`;
+  const subredditChips = state.recommended_subreddits.length
+    ? state.recommended_subreddits
+        .map(
+          (subreddit) => `
+            <span class="tag-chip secondary">
+              r/${subreddit}
+              <button type="button" aria-label="移除版块 ${subreddit}" data-remove-subreddit="${subreddit}">×</button>
+            </span>
+          `
+        )
+        .join("")
+    : `<span class="small">还没有推荐 subreddit。</span>`;
+  const keywordGroups = (state.recommended_keyword_groups || [])
+    .map(
+      (group) => `
+        <button type="button" class="chip ${group.keywords.every((keyword) => state.recommended_keywords.includes(keyword)) ? "is-active" : ""}" data-add-keyword-group="${group.id}">
+          ${group.label}
+        </button>
+      `
+    )
+    .join("");
+  const crawlCost = state.crawl_cost_estimate || estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
 
   document.getElementById("view-setup").innerHTML = `
     <section class="hero">
       <div class="card hero-main">
         <p class="eyebrow">Study Setup</p>
         <h1>先定义研究任务，再让系统帮你缩小客群、产品和关键词范围。</h1>
-        <p class="copy">这一步不让业务负责人手工配置大矩阵，而是先把业务问题讲清楚：研究哪个市场、哪条业务线、哪类客户、想支持什么决策。</p>
+        <p class="copy">这一步不让业务负责人手工改 JSON，而是先把业务问题讲清楚：系统会自动填好关键词和 subreddit，你只需要微调后直接开跑。</p>
       </div>
       <div class="side-stack">
         <div class="card side-card">
@@ -1075,6 +1238,7 @@ function renderStudySetup() {
           <div class="stack">
             <div class="item"><strong>避免爬太多无用数据</strong><div class="small">先定义业务问题，系统再反推关键词和来源。</div></div>
             <div class="item"><strong>让输出更像决策产品</strong><div class="small">不是给你帖子列表，而是给你推荐客群、机会假设和包装方向。</div></div>
+            <div class="item"><strong>新增关键词能立即生效</strong><div class="small">创建后系统会强制先跑 browser 首轮发现，再自动切回 adaptive。</div></div>
           </div>
         </div>
       </div>
@@ -1089,11 +1253,11 @@ function renderStudySetup() {
         <form id="study-setup-form" class="form-grid">
           <label class="field">
             <span>研究标题</span>
-            <input type="text" name="title" value="美国 / Dropshipping 供应链服务 / 履约与 supplier 问题">
+            <input type="text" name="title" value="${state.fields.title}">
           </label>
           <label class="field">
             <span>市场</span>
-            <input type="text" name="market" value="美国 dropshipping">
+            <input type="text" name="market" value="${state.fields.market}">
           </label>
           <label class="field">
             <span>业务线</span>
@@ -1105,7 +1269,7 @@ function renderStudySetup() {
           </label>
           <label class="field">
             <span>目标客群</span>
-            <input type="text" name="target_customer" value="已出单但履约混乱的卖家">
+            <input type="text" name="target_customer" value="${state.fields.target_customer}">
           </label>
           <label class="field">
             <span>主要目标</span>
@@ -1113,14 +1277,43 @@ function renderStudySetup() {
           </label>
           <label class="field full">
             <span>问题空间</span>
-            <textarea name="problem_space" rows="4">履约与发货、private supplier、3PL 切换、shipping delays、退款压力</textarea>
+            <textarea name="problem_space" rows="4">${state.fields.problem_space}</textarea>
           </label>
           <label class="field">
             <span>时间窗口</span>
-            <input type="text" name="time_window" value="近 30 天">
+            <input type="text" name="time_window" value="${state.fields.time_window}">
           </label>
+          <div class="field full soft-panel">
+            <div class="field-row">
+              <div>
+                <span>自动推荐关键词</span>
+                <div class="small">系统先填好，你可以删改后再直接开跑。</div>
+              </div>
+              <button type="button" class="button secondary small-button" data-generate-study-draft>刷新推荐关键词</button>
+            </div>
+            <div class="tag-list">${keywordChips}</div>
+            <div class="field-row inline-entry">
+              <input type="text" name="keyword_input" value="${state.keyword_input || ""}" placeholder="手动补一个关键词，例如 private agent">
+              <button type="button" class="button secondary" data-add-keyword>添加关键词</button>
+            </div>
+            <div class="chips-row">${keywordGroups}</div>
+          </div>
+          <div class="field full soft-panel">
+            <div class="field-row">
+              <div>
+                <span>推荐抓取范围</span>
+                <div class="small">先用系统建议的 subreddit 开始，后面再扩展。</div>
+              </div>
+            </div>
+            <div class="tag-list">${subredditChips}</div>
+            <div class="field-row inline-entry">
+              <input type="text" name="subreddit_input" value="${state.subreddit_input || ""}" placeholder="手动补一个 subreddit，例如 entrepreneur">
+              <button type="button" class="button secondary" data-add-subreddit>添加版块</button>
+            </div>
+            <div class="small">预估发现查询：${crawlCost.query_count} · 级别 ${crawlCost.level} · ${crawlCost.note}</div>
+          </div>
           <div class="cta full">
-            <button type="submit" class="button primary">生成并保存 Study</button>
+            <button type="submit" class="button primary">保存 Study 并立即首跑</button>
           </div>
         </form>
       </div>
@@ -1134,8 +1327,8 @@ function renderStudySetup() {
           ${studyDraftMarkup(latestStudyDraft)}
         </div>
         <div class="section-head" style="margin-top: 18px;">
-          <div><div class="label">自动调度</div><h2>把研究任务变成持续运行的情报管线</h2></div>
-          <p>给业务负责人一个简单的开关：是否自动更新，多久更新一次，要不要立即跑一轮。</p>
+          <div><div class="label">自动运行策略</div><h2>首次先 browser，后续回到 adaptive</h2></div>
+          <p>新增关键词后，系统会先用 browser 模式发现新 thread；首跑完成后，自动调度继续走 adaptive。</p>
         </div>
         <form id="schedule-form" class="form-grid">
           <label class="field">
@@ -1575,6 +1768,27 @@ function studyDraftMarkup(draft) {
             .join("")}
         </div>
       </div>
+      ${
+        draft.recommended_keyword_groups?.length
+          ? `
+          <div class="item">
+            <strong>关键词主题包</strong>
+            <div class="stack">
+              ${draft.recommended_keyword_groups
+                .map(
+                  (group) => `
+                    <div class="item">
+                      <strong>${group.label}</strong>
+                      <div class="small">${group.keywords.join(" / ")}</div>
+                    </div>
+                  `
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+          : ""
+      }
       <div class="item">
         <strong>推荐机会假设</strong>
         <div class="stack">
@@ -1594,6 +1808,32 @@ function studyDraftMarkup(draft) {
         <strong>建议输出</strong>
         <div class="small">${draft.recommended_outputs.join(" / ")}</div>
       </div>
+      <div class="panel-grid">
+        <div class="item">
+          <strong>首次运行建议</strong>
+          <div class="small">${draft.suggested_first_run_mode || "browser"} 首跑，优先发现新增关键词对应的新 thread。</div>
+        </div>
+        <div class="item">
+          <strong>后续调度建议</strong>
+          <div class="small">${draft.suggested_schedule_mode || "adaptive"} / 每 ${draft.suggested_interval_hours || 24}h 自动刷新。</div>
+        </div>
+      </div>
+      ${
+        draft.crawl_cost_estimate
+          ? `
+          <div class="item">
+            <strong>抓取成本预估</strong>
+            <div class="small">
+              ${draft.crawl_cost_estimate.subreddit_count} 个 subreddit ·
+              ${draft.crawl_cost_estimate.keyword_count} 个关键词 ·
+              约 ${draft.crawl_cost_estimate.query_count} 个发现查询 ·
+              级别 ${draft.crawl_cost_estimate.level}
+            </div>
+            <div class="small">${draft.crawl_cost_estimate.note}</div>
+          </div>
+        `
+          : ""
+      }
       <div class="item">
         <strong>决策检查清单</strong>
         <div class="small">${draft.decision_checks.join(" / ")}</div>
@@ -1621,6 +1861,22 @@ function bindEvents() {
     setActiveView(link.dataset.view);
   });
 
+  const syncStudySetupField = (event) => {
+    const setupForm = event.target.closest("#study-setup-form");
+    if (!setupForm) return;
+    const state = ensureStudySetupState();
+    const fieldName = event.target.name;
+    if (!fieldName) return;
+    if (fieldName === "keyword_input" || fieldName === "subreddit_input") {
+      state[fieldName] = event.target.value;
+      return;
+    }
+    state.fields[fieldName] = event.target.value;
+  };
+
+  document.addEventListener("input", syncStudySetupField);
+  document.addEventListener("change", syncStudySetupField);
+
   document.getElementById("study-rail").addEventListener("click", async (event) => {
     const card = event.target.closest("[data-study-id]");
     if (!card) return;
@@ -1630,6 +1886,76 @@ function bindEvents() {
   });
 
   document.addEventListener("click", async (event) => {
+    const generateDraftButton = event.target.closest("[data-generate-study-draft]");
+    if (generateDraftButton) {
+      generateDraftButton.disabled = true;
+      await refreshStudyDraftRecommendations();
+      generateDraftButton.disabled = false;
+      return;
+    }
+
+    const addKeywordButton = event.target.closest("[data-add-keyword]");
+    if (addKeywordButton) {
+      const state = ensureStudySetupState();
+      const keyword = String(state.keyword_input || "").trim();
+      if (!keyword) {
+        showToast("还没有输入关键词", "先在输入框里补一个关键词，再点击添加。", "warn");
+        return;
+      }
+      state.recommended_keywords = mergeUniqueList(state.recommended_keywords, [keyword]);
+      state.keyword_input = "";
+      state.crawl_cost_estimate = estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+      renderStudySetup();
+      return;
+    }
+
+    const addSubredditButton = event.target.closest("[data-add-subreddit]");
+    if (addSubredditButton) {
+      const state = ensureStudySetupState();
+      const subreddit = String(state.subreddit_input || "").trim().replace(/^r\//i, "");
+      if (!subreddit) {
+        showToast("还没有输入 subreddit", "先在输入框里补一个版块，再点击添加。", "warn");
+        return;
+      }
+      state.recommended_subreddits = mergeUniqueList(state.recommended_subreddits, [subreddit]);
+      state.subreddit_input = "";
+      state.crawl_cost_estimate = estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+      renderStudySetup();
+      return;
+    }
+
+    const removeKeywordButton = event.target.closest("[data-remove-keyword]");
+    if (removeKeywordButton) {
+      const state = ensureStudySetupState();
+      const keyword = removeKeywordButton.dataset.removeKeyword;
+      state.recommended_keywords = state.recommended_keywords.filter((item) => item !== keyword);
+      state.crawl_cost_estimate = estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+      renderStudySetup();
+      return;
+    }
+
+    const removeSubredditButton = event.target.closest("[data-remove-subreddit]");
+    if (removeSubredditButton) {
+      const state = ensureStudySetupState();
+      const subreddit = removeSubredditButton.dataset.removeSubreddit;
+      state.recommended_subreddits = state.recommended_subreddits.filter((item) => item !== subreddit);
+      state.crawl_cost_estimate = estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+      renderStudySetup();
+      return;
+    }
+
+    const addKeywordGroupButton = event.target.closest("[data-add-keyword-group]");
+    if (addKeywordGroupButton) {
+      const state = ensureStudySetupState();
+      const groupId = addKeywordGroupButton.dataset.addKeywordGroup;
+      const group = (state.recommended_keyword_groups || []).find((item) => item.id === groupId);
+      if (!group) return;
+      state.recommended_keywords = mergeUniqueList(state.recommended_keywords, group.keywords || []);
+      state.crawl_cost_estimate = estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+      renderStudySetup();
+      return;
+    }
+
     const trendViewButton = event.target.closest("[data-trend-view]");
     if (trendViewButton) {
       selectedTrendViewKey = trendViewButton.dataset.trendView;
@@ -1785,20 +2111,33 @@ function bindEvents() {
     const form = event.target.closest("#study-setup-form");
     if (form) {
       event.preventDefault();
-
-      const formData = new FormData(form);
-      const payload = Object.fromEntries(formData.entries());
+      const payload = {
+        ...currentStudySetupPayload(),
+        auto_run: {
+          enabled: true,
+          initial_mode: ensureStudySetupState().suggested_first_run_mode || "browser",
+          schedule_mode: ensureStudySetupState().suggested_schedule_mode || "adaptive",
+          interval_hours: ensureStudySetupState().suggested_interval_hours || 24,
+        },
+      };
 
       try {
         const created = await createStudy(payload);
         latestStudyDraft = created.draft;
-        document.getElementById("study-draft-panel").innerHTML = studyDraftMarkup(created.draft);
         await refreshStudyList();
         await hydrateStudy(created.study.id);
+        setActiveView(apiAvailable && created.queued_job ? "operations" : "dashboard");
+        if (created.queued_job) {
+          showToast("Study 已创建并开始首跑", `${created.study.title} 已按 browser 首跑，并切回 adaptive 自动调度。`, "success");
+        } else {
+          showToast("Study 已创建", `${created.study.title} 已保存。`, "success");
+        }
       } catch (error) {
         console.warn("Study create fallback:", error);
-        latestStudyDraft = buildLocalStudyDraft(payload);
-        document.getElementById("study-draft-panel").innerHTML = studyDraftMarkup(latestStudyDraft);
+        const localDraft = buildLocalStudyDraft(payload);
+        applyDraftToStudySetup(localDraft);
+        renderStudySetup();
+        showToast("创建失败", "后端没有成功接住这次创建，请稍后重试。", "error");
       }
       return;
     }
@@ -1871,12 +2210,32 @@ async function createStudy(payload) {
       },
       draft: buildLocalStudyDraft(payload),
       payload: fallbackData,
+      queued_job: payload.auto_run ? { id: "local-job", status: "queued" } : null,
     };
   }
   return apiFetchJson("/api/studies", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+async function refreshStudyDraftRecommendations({ silent = false } = {}) {
+  const payload = { ...ensureStudySetupState().fields };
+  try {
+    const draft = await createStudyDraft(payload);
+    applyDraftToStudySetup(draft);
+    renderStudySetup();
+    if (!silent) {
+      showToast("关键词已更新", "系统已经按当前问题空间重新推荐关键词和抓取范围。", "success");
+    }
+    return draft;
+  } catch (error) {
+    console.warn("Draft refresh failed:", error);
+    if (!silent) {
+      showToast("推荐刷新失败", "已保留当前关键词，你可以继续手动编辑后开跑。", "error");
+    }
+    return latestStudyDraft;
+  }
 }
 
 async function rebuildStudy(studyId, mode = refreshMode) {
@@ -1975,6 +2334,12 @@ function buildLocalStudyDraft(form) {
   const businessLine = form.business_line || "Dropshipping 供应链服务";
   const market = form.market || "美国 dropshipping";
   const targetCustomer = form.target_customer || "已出单但履约混乱的卖家";
+  const recommendedKeywords = normalizeUniqueList(
+    form.recommended_keywords || ["3PL", "fulfillment service", "private supplier", "shipping delays", "sourcing agent", "refunds"]
+  );
+  const recommendedSubreddits = normalizeUniqueList(
+    form.recommended_subreddits || ["dropship", "dropshipping", "ecommerce", "shopify"]
+  );
   return {
     study: {
       title: form.title || `${market} / ${businessLine}`,
@@ -1988,13 +2353,18 @@ function buildLocalStudyDraft(form) {
     },
     focus_statement: `围绕 ${market} 的 ${businessLine}，用公开需求信号支持“${form.primary_goal || "选客群 + 定产品包装"}”判断。`,
     recommended_sources: ["Reddit"],
-    recommended_subreddits: ["dropship", "dropshipping", "ecommerce", "shopify"],
-    recommended_keywords: ["3PL", "fulfillment service", "private supplier", "shipping delays", "sourcing agent", "refunds"],
+    recommended_subreddits: recommendedSubreddits,
+    recommended_keywords: recommendedKeywords,
+    recommended_keyword_groups: DEFAULT_STUDY_KEYWORD_GROUPS,
     recommended_hypotheses: [
       { name: "Fulfillment 主线", description: "优先验证 shipping delays 与 3PL confusion 是否是最值得先打的痛点。" },
       { name: "Supplier 第二主线", description: "保留 private supplier / sourcing agent 作为第二优先级产品方向。" },
     ],
     recommended_outputs: ["Dashboard 每日看板", "Weekly Brief 周会简报", "Packaging Studio 产品包装建议"],
+    suggested_first_run_mode: "browser",
+    suggested_schedule_mode: "adaptive",
+    suggested_interval_hours: 24,
+    crawl_cost_estimate: estimateStudySetupCost(recommendedSubreddits, recommendedKeywords),
     decision_checks: [
       "哪个客群最值得先打？",
       "该主推 Fulfillment 还是 Supplier？",
@@ -2170,6 +2540,10 @@ async function init() {
   }
 
   boot();
+
+  if (apiAvailable && !latestStudyDraft) {
+    await refreshStudyDraftRecommendations({ silent: true });
+  }
 }
 
 init();

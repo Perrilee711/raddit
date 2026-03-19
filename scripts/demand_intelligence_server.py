@@ -1294,7 +1294,97 @@ def suggest_focus_statement(form: dict[str, Any]) -> str:
     return f"围绕 {market} 的 {business_line}，用公开需求信号支持“{goal}”判断。"
 
 
+def normalize_text_list(values: Any) -> list[str]:
+    if values is None:
+        return []
+    if isinstance(values, str):
+        candidates = re.split(r"[\n,，;；]+", values)
+    elif isinstance(values, list):
+        candidates = values
+    else:
+        return []
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in candidates:
+        text = str(item or "").strip()
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(text)
+    return normalized
+
+
+def draft_keyword_groups(form: dict[str, Any]) -> list[dict[str, Any]]:
+    text = " ".join(
+        str(form.get(key, "")) for key in ["business_line", "market", "problem_space", "target_customer"]
+    ).lower()
+    if "dropshipping" in text or "supplier" in text or "fulfillment" in text:
+        return [
+            {
+                "id": "fulfillment",
+                "label": "履约 / 3PL",
+                "keywords": ["3PL", "fulfillment service", "fulfillment partner", "slow shipping", "shipping times"],
+            },
+            {
+                "id": "supplier",
+                "label": "Supplier / Sourcing",
+                "keywords": ["private supplier", "sourcing agent", "China supplier", "supplier issues", "private agent"],
+            },
+            {
+                "id": "risk",
+                "label": "Risk / QC",
+                "keywords": ["inspection", "quality issues", "wrong item", "fake supplier", "refunds"],
+            },
+            {
+                "id": "cost",
+                "label": "Cost / Margin",
+                "keywords": ["margin", "profit margin", "landed cost", "shipping costs", "cost down"],
+            },
+        ]
+    return [
+        {
+            "id": "discovery",
+            "label": "Discovery",
+            "keywords": ["supplier", "fulfillment", "shipping", "3PL", "inspection"],
+        },
+        {
+            "id": "economics",
+            "label": "Economics",
+            "keywords": ["margin", "returns", "refunds", "cost down"],
+        },
+    ]
+
+
+def estimate_crawl_cost(subreddits: list[str], keywords: list[str]) -> dict[str, Any]:
+    query_count = len(subreddits) * len(keywords)
+    if query_count >= 60:
+        level = "high"
+        note = "抓取查询量偏高，建议先分批验证关键词贡献。"
+    elif query_count >= 24:
+        level = "medium"
+        note = "查询量适中，适合首轮验证后再决定是否扩词。"
+    else:
+        level = "low"
+        note = "查询量较轻，适合快速首跑。"
+    return {
+        "subreddit_count": len(subreddits),
+        "keyword_count": len(keywords),
+        "query_count": query_count,
+        "level": level,
+        "note": note,
+    }
+
+
 def draft_keywords(form: dict[str, Any]) -> list[str]:
+    manual_keywords = normalize_text_list(
+        form.get("recommended_keywords") or form.get("keywords") or form.get("search_terms")
+    )
+    if manual_keywords:
+        return manual_keywords
     text = " ".join(
         str(form.get(key, "")) for key in ["business_line", "market", "problem_space", "target_customer"]
     ).lower()
@@ -1371,10 +1461,19 @@ def build_study_draft(form: dict[str, Any]) -> dict[str, Any]:
     primary_goal = form.get("primary_goal", "选客群 + 定产品包装")
     problem_space = form.get("problem_space", "履约与 supplier 问题")
 
-    if "dropshipping" in f"{business_line} {target_customer} {problem_space}".lower():
+    provided_subreddits = normalize_text_list(
+        form.get("recommended_subreddits") or form.get("subreddits")
+    )
+    if provided_subreddits:
+        recommended_subreddits = provided_subreddits
+    elif "dropshipping" in f"{business_line} {target_customer} {problem_space}".lower():
         recommended_subreddits = ["dropship", "dropshipping", "ecommerce", "shopify"]
     else:
         recommended_subreddits = ["ecommerce", "shopify", "entrepreneur"]
+
+    recommended_keywords = draft_keywords(form)
+    keyword_groups = draft_keyword_groups(form)
+    crawl_cost = estimate_crawl_cost(recommended_subreddits, recommended_keywords)
 
     return {
         "study": {
@@ -1390,9 +1489,14 @@ def build_study_draft(form: dict[str, Any]) -> dict[str, Any]:
         "focus_statement": suggest_focus_statement(form),
         "recommended_sources": DEFAULT_TEMPLATE["sources"],
         "recommended_subreddits": recommended_subreddits,
-        "recommended_keywords": draft_keywords(form),
+        "recommended_keywords": recommended_keywords,
+        "recommended_keyword_groups": keyword_groups,
         "recommended_hypotheses": draft_hypotheses(form),
         "recommended_outputs": DEFAULT_TEMPLATE["recommended_outputs"],
+        "suggested_first_run_mode": "browser",
+        "suggested_schedule_mode": "adaptive",
+        "suggested_interval_hours": 24,
+        "crawl_cost_estimate": crawl_cost,
         "decision_checks": [
             "哪个客群的痛感最强、表达最具体？",
             "哪个问题更容易包装成清晰 offer？",
@@ -1819,8 +1923,40 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
         )
         record = materialize_record(record, self.input_path)
         record["payload"]["summary"]["explanation"] += " 当前为新建 study 的初始版本，后续可绑定专属数据源继续细化。"
+
+        auto_run = payload.get("auto_run") or {}
+        queued_job = None
+        if auto_run:
+            initial_mode = auto_run.get("initial_mode", draft.get("suggested_first_run_mode", "browser"))
+            schedule_mode = auto_run.get("schedule_mode", draft.get("suggested_schedule_mode", "adaptive"))
+            interval_hours = max(int(auto_run.get("interval_hours", draft.get("suggested_interval_hours", 24)) or 24), 1)
+            enable_schedule = bool(auto_run.get("enabled", True))
+
+            if initial_mode not in ALL_JOB_MODES:
+                self.send_json({"error": "invalid_mode", "mode": initial_mode}, status=400)
+                return
+            if schedule_mode not in ALL_JOB_MODES:
+                self.send_json({"error": "invalid_mode", "mode": schedule_mode}, status=400)
+                return
+            if mode_requires_admin(initial_mode) or mode_requires_admin(schedule_mode):
+                if not ensure_role(user, "admin"):
+                    self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
+                    return
+
+            record["schedule"] = {
+                "enabled": enable_schedule,
+                "mode": schedule_mode,
+                "interval_hours": interval_hours,
+                "last_run_at": None,
+                "next_run_at": (datetime.now() + timedelta(hours=interval_hours)).isoformat(timespec="seconds")
+                if enable_schedule
+                else None,
+            }
+
         attach_study_runtime(record, self.input_path)
         save_study_record(record)
+        if auto_run:
+            queued_job = enqueue_job(study_id, initial_mode, actor=user, trigger="create_and_run")
         self.send_json(
             {
                 "study": summarize_record(record),
@@ -1829,6 +1965,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 "artifacts": record.get("artifacts", {}),
                 "source": record.get("source", {}),
                 "data_foundation": record.get("data_foundation", {}),
+                "queued_job": queued_job,
             },
             status=201,
         )

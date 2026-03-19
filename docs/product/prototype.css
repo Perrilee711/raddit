@@ -873,6 +873,29 @@ h1, h2, h3, h4, p {
   grid-column: 1 / -1;
 }
 
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.field-row.inline-entry {
+  align-items: center;
+}
+
+.field-row.inline-entry input {
+  flex: 1;
+}
+
+.soft-panel {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.82);
+  gap: 14px;
+}
+
 .field span {
   font-size: 13px;
   font-weight: 800;
@@ -895,6 +918,51 @@ h1, h2, h3, h4, p {
 .field textarea {
   resize: vertical;
   min-height: 112px;
+}
+
+.tag-list,
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--blue);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tag-chip.secondary {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--gray-700);
+  border-color: var(--line);
+}
+
+.tag-chip button {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: currentColor;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.small-button {
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 
 .field.inline-toggle {
