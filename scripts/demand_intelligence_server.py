@@ -85,6 +85,7 @@ STAGE_LABELS = {
     "rebuild_aggregates": "rebuild_aggregates",
     "publish_brief": "publish_brief",
 }
+JOB_DISPLAY_COMPLETED_WINDOW_HOURS = 24
 LEGACY_SERVER_ROOTS = [
     Path("/Users/perrilee/Desktop/探索/raddit"),
     Path.home() / "raddit-service",
@@ -603,6 +604,26 @@ def list_jobs() -> list[dict[str, Any]]:
             continue
     jobs.sort(key=lambda item: item.get("created_at", ""), reverse=True)
     return jobs
+
+
+def job_visible_in_operations(job: dict[str, Any]) -> bool:
+    status = job.get("status")
+    if status in {"queued", "running"}:
+        return True
+    if status != "completed":
+        return False
+    finished_at = parse_iso(job.get("finished_at") or job.get("updated_at") or job.get("created_at"))
+    if finished_at is None:
+        return True
+    return finished_at >= datetime.now() - timedelta(hours=JOB_DISPLAY_COMPLETED_WINDOW_HOURS)
+
+
+def list_visible_jobs(study_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    jobs = list_jobs()
+    if study_id:
+        jobs = [job for job in jobs if job.get("study_id") == study_id]
+    jobs = [job for job in jobs if job_visible_in_operations(job)]
+    return jobs[:limit]
 
 
 def list_jobs_for_study(study_id: str) -> list[dict[str, Any]]:
@@ -1486,7 +1507,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             user = self.require_role("viewer")
             if user is None:
                 return
-            self.send_json({"jobs": [enrich_job(job) for job in list_jobs()[:50]]})
+            self.send_json({"jobs": [enrich_job(job) for job in list_visible_jobs(limit=50)]})
             return
 
         if path.startswith("/api/jobs/"):
@@ -1617,7 +1638,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 {
                     "study": summarize_record(record),
                     "schedule": record.get("schedule", {}),
-                    "jobs": [enrich_job(job) for job in list_jobs_for_study(study_id)[:50]],
+                    "jobs": [enrich_job(job) for job in list_visible_jobs(study_id=study_id, limit=50)],
                     "source": record.get("source", {}),
                     "artifacts": record.get("artifacts", {}),
                     "data_foundation": record.get("data_foundation", {}),
@@ -1625,7 +1646,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             )
             return
         if suffix == "/jobs":
-            self.send_json({"study": summarize_record(record), "jobs": [enrich_job(job) for job in list_jobs_for_study(study_id)[:50]]})
+            self.send_json({"study": summarize_record(record), "jobs": [enrich_job(job) for job in list_visible_jobs(study_id=study_id, limit=50)]})
             return
         if suffix == "/schedule":
             self.send_json({"study": summarize_record(record), "schedule": record.get("schedule", {})})

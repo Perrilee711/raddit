@@ -1245,7 +1245,8 @@ function renderSegments() {
 }
 
 function renderOperations() {
-  const visibleJobs = getVisibleOperationsJobs().slice().sort((left, right) => {
+  const effectiveJobs = (allJobs || []).filter(isEffectiveOperationsJob);
+  const visibleJobs = getVisibleOperationsJobs().filter(isEffectiveOperationsJob).slice().sort((left, right) => {
     const statusRank = { running: 0, queued: 1, failed: 2, completed: 3, canceled: 4 };
     const laneRank = { realtime: 0, discovery: 1, maintenance: 2 };
     const statusDiff = (statusRank[left.status] ?? 99) - (statusRank[right.status] ?? 99);
@@ -1263,13 +1264,11 @@ function renderOperations() {
   const selectedJob = (visibleJobs || []).find((job) => job.id === selectedJobId) || null;
 
   const statusSummary = {
-    queued: allJobs.filter((job) => job.status === "queued").length,
-    running: allJobs.filter((job) => job.status === "running").length,
-    completed: allJobs.filter((job) => job.status === "completed").length,
-    failed: allJobs.filter((job) => job.status === "failed").length,
-    canceled: allJobs.filter((job) => job.status === "canceled").length,
+    queued: effectiveJobs.filter((job) => job.status === "queued").length,
+    running: effectiveJobs.filter((job) => job.status === "running").length,
+    completed: effectiveJobs.filter((job) => job.status === "completed").length,
   };
-  const laneSummary = allJobs.reduce(
+  const laneSummary = effectiveJobs.reduce(
     (summary, job) => {
       const lane = job.queue_lane || "maintenance";
       summary[lane] = (summary[lane] || 0) + 1;
@@ -1342,17 +1341,15 @@ function renderOperations() {
         <p class="copy">这里不是看结论，而是看系统有没有在稳定工作：哪些任务在跑、哪些 study 开了调度、失败了能不能快速重试。</p>
       </div>
       <div class="side-stack">
-        <div class="card side-card">
-          <div class="label">任务概览</div>
-          <div class="stack">
-            <div class="item"><strong>Queued</strong><div class="small">${statusSummary.queued}</div></div>
-            <div class="item"><strong>Running</strong><div class="small">${statusSummary.running}</div></div>
-            <div class="item"><strong>Completed</strong><div class="small">${statusSummary.completed}</div></div>
-            <div class="item"><strong>Failed</strong><div class="small">${statusSummary.failed}</div></div>
-            <div class="item"><strong>Canceled</strong><div class="small">${statusSummary.canceled}</div></div>
-            <div class="item"><strong>${laneLabel("realtime")}</strong><div class="small">${laneSummary.realtime}</div></div>
-            <div class="item"><strong>${laneLabel("discovery")}</strong><div class="small">${laneSummary.discovery}</div></div>
-            <div class="item"><strong>${laneLabel("maintenance")}</strong><div class="small">${laneSummary.maintenance}</div></div>
+      <div class="card side-card">
+        <div class="label">任务概览</div>
+        <div class="stack">
+          <div class="item"><strong>Queued</strong><div class="small">${statusSummary.queued}</div></div>
+          <div class="item"><strong>Running</strong><div class="small">${statusSummary.running}</div></div>
+          <div class="item"><strong>Completed</strong><div class="small">${statusSummary.completed}</div></div>
+          <div class="item"><strong>${laneLabel("realtime")}</strong><div class="small">${laneSummary.realtime}</div></div>
+          <div class="item"><strong>${laneLabel("discovery")}</strong><div class="small">${laneSummary.discovery}</div></div>
+          <div class="item"><strong>${laneLabel("maintenance")}</strong><div class="small">${laneSummary.maintenance}</div></div>
           </div>
         </div>
       </div>
@@ -1370,7 +1367,7 @@ function renderOperations() {
       <div class="card section-card">
         <div class="section-head">
           <div><div class="label orange">全局任务中心</div><h2>最近 12 条任务</h2></div>
-          <p>失败任务可以直接重跑，或者打开对应 Study 深挖。</p>
+          <p>这里只保留当前有效任务和最近完成任务，历史失败不会再干扰视图。</p>
         </div>
         <div class="filters">${filterTabs}</div>
         <div class="split" style="margin-top: 14px;">
@@ -1937,6 +1934,17 @@ async function cancelJob(jobId) {
 
 function getStudyById(studyId) {
   return (studyList || []).find((study) => study.id === studyId) || null;
+}
+
+function isEffectiveOperationsJob(job) {
+  if (!job) return false;
+  if (job.status === "queued" || job.status === "running") return true;
+  if (job.status !== "completed") return false;
+  const finishedAt = job.finished_at || job.updated_at || job.created_at;
+  if (!finishedAt) return true;
+  const timestamp = Date.parse(finishedAt);
+  if (Number.isNaN(timestamp)) return true;
+  return timestamp >= Date.now() - 24 * 60 * 60 * 1000;
 }
 
 function getVisibleOperationsJobs() {
