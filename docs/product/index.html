@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Demand Intelligence Platform</title>
-  <meta name="description" content="为 CEO 与业务线负责人提供需求情报、客群机会与产品包装判断的市场决策平台。">
+  <title>Demand Intelligence Platform | 市场需求与产品决策平台</title>
+  <meta name="description" content="Demand Intelligence Platform 帮助 CEO 与业务线负责人从公开市场信号中判断高价值客群、产品机会与增长窗口。">
   <meta name="robots" content="index,follow">
   <meta name="theme-color" content="#12314b">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="zh_CN">
   <meta property="og:site_name" content="Demand Intelligence Platform">
-  <meta property="og:title" content="Demand Intelligence Platform">
-  <meta property="og:description" content="为 CEO 与业务线负责人提供需求情报、客群机会与产品包装判断的市场决策平台。">
+  <meta property="og:title" content="Demand Intelligence Platform | 市场需求与产品决策平台">
+  <meta property="og:description" content="帮助 CEO 与业务线负责人从公开市场信号中判断高价值客群、产品机会与增长窗口。">
   <meta property="og:url" content="https://skill-deploy-jr9bh4v87v.vercel.app/">
   <meta property="og:image" content="https://skill-deploy-jr9bh4v87v.vercel.app/og-image.svg">
   <meta property="og:image:alt" content="Demand Intelligence Platform 预览图">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Demand Intelligence Platform">
+  <meta name="twitter:title" content="Demand Intelligence Platform | 市场需求与产品决策平台">
   <meta name="twitter:description" content="把公开市场信号转化为高价值客群、产品包装与趋势决策。">
   <meta name="twitter:image" content="https://skill-deploy-jr9bh4v87v.vercel.app/og-image.svg">
   <link rel="canonical" href="https://skill-deploy-jr9bh4v87v.vercel.app/">
@@ -31,57 +31,234 @@
       "name": "Demand Intelligence Platform",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
-      "description": "为 CEO 与业务线负责人提供需求情报、客群机会与产品包装判断的市场决策平台。",
+      "description": "帮助 CEO 与业务线负责人从公开市场信号中判断高价值客群、产品机会与增长窗口。",
       "url": "https://skill-deploy-jr9bh4v87v.vercel.app/"
     }
   </script>
 </head>
-<body>
-  <div class="shell">
-    <div class="topbar">
+<body class="landing-page">
+  <div class="landing-shell">
+    <header class="landing-topbar">
       <div class="brand">
         <div class="logo">D</div>
         <div>
           <div class="title">Demand Intelligence Platform</div>
-          <div class="subtitle">为 CEO 与业务线负责人提供客群、需求与产品决策</div>
+          <div class="subtitle">把公开市场信号转化为客群、产品与增长决策</div>
         </div>
       </div>
-      <div class="topbar-side">
-        <div class="meta" id="meta-pills"></div>
-        <div class="auth-panel" id="auth-panel"></div>
-      </div>
-    </div>
+      <nav class="landing-nav">
+        <a href="#value">价值</a>
+        <a href="#audience">适合谁</a>
+        <a href="#why-now">为什么现在做</a>
+        <a href="./mvp-app.html" class="button secondary">查看产品演示</a>
+      </nav>
+    </header>
 
-    <div class="toolbar">
-      <div class="view-tabs" id="view-tabs"></div>
-      <div class="filters">
-        <div class="chip is-active" id="market-chip">市场：美国 dropshipping</div>
-        <div class="chip" id="range-chip">周期：近 30 天</div>
-        <div class="chip" id="confidence-chip">Confidence：High</div>
-        <label class="inline-select">
-          <span>刷新模式</span>
-          <select id="refresh-mode-select">
-            <option value="seeded">seeded</option>
-            <option value="browser">browser</option>
-          </select>
-        </label>
-        <button type="button" class="button secondary" id="refresh-study-button">刷新当前 Study</button>
-      </div>
-    </div>
+    <main class="landing-main">
+      <section class="landing-hero">
+        <div class="landing-hero-copy">
+          <div class="eyebrow">Market Intelligence For Operators</div>
+          <h1>用一套产品化决策界面，帮助业务团队更快看懂市场、找到高价值客群、定义该卖什么。</h1>
+          <p class="copy">
+            Demand Intelligence Platform 面向 CEO、业务线负责人和策略负责人，
+            把 Reddit 等公开市场信号转化为可执行的客群判断、产品包装建议与趋势结论。
+          </p>
+          <div class="landing-actions">
+            <a href="./mvp-app.html" class="button primary">进入产品演示</a>
+            <a href="https://github.com/Perrilee711/raddit" class="button secondary">查看项目仓库</a>
+          </div>
+          <div class="landing-proof">
+            <div class="proof-item">
+              <strong>564</strong>
+              <span>已清洗样本</span>
+            </div>
+            <div class="proof-item">
+              <strong>6</strong>
+              <span>趋势窗口</span>
+            </div>
+            <div class="proof-item">
+              <strong>2</strong>
+              <span>优先产品主线</span>
+            </div>
+            <div class="proof-item">
+              <strong>1</strong>
+              <span>统一决策入口</span>
+            </div>
+          </div>
+        </div>
 
-    <section id="study-rail"></section>
+        <div class="landing-preview card">
+          <div class="label orange">Executive Preview</div>
+          <h2>当前最值得优先打的客群</h2>
+          <div class="preview-segment">
+            <strong>运营期 / 替换中 / 履约与发货</strong>
+            <span>用户已经在为发货慢、退款增加与 3PL 混乱付出成本。</span>
+          </div>
+          <div class="preview-metrics">
+            <div class="metric">
+              <strong>87.1</strong>
+              <span>Opportunity Score</span>
+            </div>
+            <div class="metric">
+              <strong>83</strong>
+              <span>Packaging Readiness</span>
+            </div>
+          </div>
+          <div class="preview-callout">
+            <span class="mini-pill up">+38% 需求升温</span>
+            <span class="mini-pill">推荐产品：3PL &amp; Fulfillment Audit</span>
+          </div>
+          <div class="preview-list">
+            <div class="item">
+              <strong>老板最关心的不是帖子数量</strong>
+              <div class="small">而是“现在该打谁、卖什么、为什么现在打”。</div>
+            </div>
+            <div class="item">
+              <strong>这个平台把研究变成一套经营判断</strong>
+              <div class="small">从公开市场信号里提炼客群、价值主张和优先级。</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <section id="view-dashboard"></section>
-    <section id="view-operations" class="hidden"></section>
-    <section id="view-setup" class="hidden"></section>
-    <section id="view-segments" class="hidden"></section>
-    <section id="view-packaging" class="hidden"></section>
-    <section id="view-weekly" class="hidden"></section>
+      <section class="landing-section" id="value">
+        <div class="section-head">
+          <div>
+            <div class="label">核心价值</div>
+            <h2>不是又一个“爬虫工具”，而是一套给业务负责人看的市场决策平台</h2>
+          </div>
+          <p>它不把原始帖子堆给你，而是直接给出客群优先级、产品包装建议、趋势变化和证据摘要。</p>
+        </div>
+        <div class="landing-grid landing-grid-4">
+          <div class="insight-card">
+            <h3>选客群</h3>
+            <p class="small">快速判断现在最值得投入的客户类型，而不是被泛流量牵着走。</p>
+          </div>
+          <div class="insight-card">
+            <h3>定产品</h3>
+            <p class="small">把需求主题翻译成可销售的产品包装，而不是停留在“市场有痛点”。</p>
+          </div>
+          <div class="insight-card">
+            <h3>看趋势</h3>
+            <p class="small">识别哪些问题在升温、哪些需求在回落，避免用过时判断做新决策。</p>
+          </div>
+          <div class="insight-card">
+            <h3>有证据</h3>
+            <p class="small">每一个核心判断都能追溯到用户原话和来源，降低“黑箱感”。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="audience">
+        <div class="section-head">
+          <div>
+            <div class="label orange">适合谁</div>
+            <h2>给需要做市场与产品判断的人，而不是给研究工具爱好者</h2>
+          </div>
+          <p>首页的信息结构被刻意收敛成管理层能快速吸收的形式，适合内部评审、周会决策和老板转发。</p>
+        </div>
+        <div class="landing-grid landing-grid-3">
+          <div class="package">
+            <div class="label">CEO</div>
+            <p><strong>看业务方向</strong></p>
+            <p>需要快速判断哪类机会值得继续投入，哪些方向应该暂停。</p>
+          </div>
+          <div class="package">
+            <div class="label">业务线负责人</div>
+            <p><strong>看客群与产品</strong></p>
+            <p>需要在每周决策前明确：主打谁、卖什么、当前该先验证哪个 offer。</p>
+          </div>
+          <div class="package">
+            <div class="label">策略 / 增长负责人</div>
+            <p><strong>看需求变化</strong></p>
+            <p>需要把分散的公开市场信号翻译成可以推动销售与产品动作的结论。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section">
+        <div class="section-head">
+          <div>
+            <div class="label">解决什么</div>
+            <h2>让团队不再停留在“知道市场很热”，而是直接知道应该怎么出手</h2>
+          </div>
+          <p>这套首页不是展示功能清单，而是把市场研究、产品包装和执行动作连接起来。</p>
+        </div>
+        <div class="landing-problem-grid">
+          <div class="card section-card">
+            <div class="label orange">常见问题</div>
+            <div class="stack">
+              <div class="item"><strong>团队看到很多帖子，但不知道该信哪一个方向</strong></div>
+              <div class="item"><strong>知道市场有需求，但不知道该先打哪类客群</strong></div>
+              <div class="item"><strong>知道客户在抱怨，但不知道应该包装成什么产品</strong></div>
+              <div class="item"><strong>周会前临时拼结论，缺少统一视图和证据</strong></div>
+            </div>
+          </div>
+          <div class="card section-card">
+            <div class="label">产品输出</div>
+            <div class="stack">
+              <div class="item"><strong>高价值客群榜</strong><div class="small">让负责人快速决定先服务谁。</div></div>
+              <div class="item"><strong>推荐产品包装</strong><div class="small">直接给出主产品、次产品与价值主张建议。</div></div>
+              <div class="item"><strong>趋势时间序列</strong><div class="small">帮助团队判断市场窗口是升温还是回落。</div></div>
+              <div class="item"><strong>证据摘要墙</strong><div class="small">让关键判断始终有用户原话支撑。</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="why-now">
+        <div class="section-head">
+          <div>
+            <div class="label orange">为什么现在做</div>
+            <h2>当市场变化越来越快，静态研究已经不够，团队需要一套持续更新的判断系统</h2>
+          </div>
+          <p>越是在竞争加速、需求波动和产品同质化严重的时候，越需要一套能把公开信号转成可执行决策的统一界面。</p>
+        </div>
+        <div class="landing-grid landing-grid-3">
+          <div class="insight-card">
+            <h3>市场变化更快</h3>
+            <p class="small">需求、渠道、用户语言都在不断变化，季度级调研已经很难跟上业务节奏。</p>
+          </div>
+          <div class="insight-card">
+            <h3>产品包装更难</h3>
+            <p class="small">同样的服务能力，如果表达不准、切口不对，很容易在市场上失去机会窗口。</p>
+          </div>
+          <div class="insight-card">
+            <h3>管理层需要更快决策</h3>
+            <p class="small">业务负责人要的是可以在周会上直接使用的判断，而不是临时堆出来的研究材料。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section">
+        <div class="landing-share card">
+          <div>
+            <div class="label">适合老板转发</div>
+            <h2>一页就能讲清：适合谁、解决什么、为什么现在做</h2>
+            <p class="copy">这版首页故意保持“结论优先、证据支撑、动作清晰”的信息顺序，方便创始人、业务负责人和产品负责人在内部快速对齐。</p>
+          </div>
+          <div class="landing-share-points">
+            <div class="mini-row"><strong>适合谁</strong><div class="small">CEO、业务线负责人、策略与增长负责人</div></div>
+            <div class="mini-row"><strong>解决什么</strong><div class="small">选客群、定产品、看趋势、带证据做经营判断</div></div>
+            <div class="mini-row"><strong>为什么现在做</strong><div class="small">市场信号变化更快，传统静态研究已经不能支撑高频决策</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section">
+        <div class="landing-cta card">
+          <div>
+            <div class="label orange">下一步</div>
+            <h2>先看一遍真实产品演示，再决定你希望把哪条业务线接进来。</h2>
+            <p class="copy">当前演示版基于真实样本构建，适合先验证信息结构、管理层可读性和产品包装逻辑。</p>
+          </div>
+          <div class="cta">
+            <a href="./mvp-app.html" class="button primary">查看完整产品演示</a>
+            <a href="https://github.com/Perrilee711/raddit" class="button secondary">查看 GitHub 仓库</a>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <div class="toast-stack" id="toast-stack"></div>
-
-  <script src="./data/fishgoo-dashboard-payload.js"></script>
-  <script src="./mvp-app.js"></script>
 </body>
 </html>

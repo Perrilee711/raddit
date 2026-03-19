@@ -943,6 +943,206 @@ h1, h2, h3, h4, p {
   font-size: 16px;
 }
 
+.landing-page {
+  background:
+    radial-gradient(circle at top left, rgba(45, 99, 214, 0.12), transparent 28%),
+    radial-gradient(circle at 78% 12%, rgba(234, 123, 37, 0.12), transparent 18%),
+    linear-gradient(180deg, #f9fbff 0%, #eef3fb 100%);
+}
+
+.landing-shell {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+.landing-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 0 22px;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.landing-nav a:not(.button) {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.landing-main {
+  display: grid;
+  gap: 24px;
+}
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.landing-hero-copy,
+.landing-preview,
+.landing-share,
+.landing-cta {
+  padding: 30px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.landing-hero-copy {
+  background:
+    radial-gradient(circle at top right, rgba(45, 99, 214, 0.1), transparent 30%),
+    linear-gradient(180deg, #ffffff, #f6faff);
+}
+
+.landing-hero-copy h1 {
+  font-size: clamp(38px, 5vw, 62px);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  margin-bottom: 16px;
+  max-width: 10.5em;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.landing-proof {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.proof-item {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.proof-item strong {
+  display: block;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+
+.proof-item span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.landing-preview h2 {
+  font-size: 30px;
+  letter-spacing: -0.04em;
+  margin-bottom: 14px;
+}
+
+.preview-segment {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #fff7ef, #fff1e4);
+  border: 1px solid #ffd6b5;
+  margin-bottom: 16px;
+}
+
+.preview-segment strong {
+  display: block;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.preview-segment span {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.preview-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.preview-callout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.preview-list {
+  display: grid;
+  gap: 12px;
+}
+
+.landing-section {
+  display: grid;
+  gap: 18px;
+}
+
+.landing-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.landing-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.landing-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.landing-share {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.landing-share h2,
+.landing-cta h2 {
+  font-size: 36px;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+
+.landing-share-points {
+  display: grid;
+  gap: 12px;
+}
+
+.landing-cta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(45, 99, 214, 0.1), transparent 26%),
+    linear-gradient(180deg, #ffffff, #f7faff);
+}
+
 @media (max-width: 1180px) {
   .hero,
   .grid.two,
@@ -977,6 +1177,19 @@ h1, h2, h3, h4, p {
   .study-rail {
     grid-template-columns: 1fr;
   }
+
+  .landing-hero,
+  .landing-grid-4,
+  .landing-grid-3,
+  .landing-problem-grid,
+  .landing-share,
+  .landing-cta {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-cta {
+    display: grid;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1004,5 +1217,21 @@ h1, h2, h3, h4, p {
   .nav a,
   .button {
     width: 100%;
+  }
+
+  .landing-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .landing-nav,
+  .landing-actions,
+  .cta {
+    width: 100%;
+  }
+
+  .landing-proof,
+  .preview-metrics {
+    grid-template-columns: 1fr 1fr;
   }
 }
