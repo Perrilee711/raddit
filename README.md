@@ -429,6 +429,28 @@ Phase 5 之后，任务不再只是简单排队，而是进入 3 条队列车道
 - `pipeline_progress`
 - `parent_job_id`
 
+## Mac 常驻运行（LaunchAgent）
+
+如果你希望这套系统在 Mac 本机登录后自动拉起、常驻运行，并依靠内部 schedule 持续刷新 study，直接看这份运行手册：
+
+- [2026-03-19-macos-launchagent-runbook.md](/Users/perrilee/Desktop/探索/raddit/docs/product/2026-03-19-macos-launchagent-runbook.md)
+
+已经配好的脚本有：
+
+- [start_demand_intelligence_agent.sh](/Users/perrilee/Desktop/探索/raddit/scripts/start_demand_intelligence_agent.sh)
+- [install_launch_agent.sh](/Users/perrilee/Desktop/探索/raddit/scripts/install_launch_agent.sh)
+- [uninstall_launch_agent.sh](/Users/perrilee/Desktop/探索/raddit/scripts/uninstall_launch_agent.sh)
+- [status_launch_agent.sh](/Users/perrilee/Desktop/探索/raddit/scripts/status_launch_agent.sh)
+- [configure_study_schedule.sh](/Users/perrilee/Desktop/探索/raddit/scripts/configure_study_schedule.sh)
+
+如果仓库位于 `Desktop` 路径下，安装脚本会自动把实际运行时同步到：
+
+```text
+~/raddit-service
+```
+
+这是为了避开 macOS 对 Desktop 目录下 LaunchAgent/自动化脚本的权限限制。状态脚本也会优先显示 LaunchAgent 当前真实使用的运行目录和日志路径，而不是只看工作区里的相对路径。
+
 因此你在 Operations 里能直接看到：
 
 - 当前跑到 `discover` 还是 `harvest`

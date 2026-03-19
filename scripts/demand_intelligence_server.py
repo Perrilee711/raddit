@@ -85,6 +85,26 @@ STAGE_LABELS = {
     "rebuild_aggregates": "rebuild_aggregates",
     "publish_brief": "publish_brief",
 }
+LEGACY_SERVER_ROOTS = [
+    Path("/Users/perrilee/Desktop/探索/raddit"),
+    Path.home() / "raddit-service",
+]
+SOURCE_PATH_KEYS = ("input_path", "browser_config_path")
+ARTIFACT_PATH_KEYS = (
+    "config_path",
+    "payload_json_path",
+    "payload_js_path",
+    "raw_output_path",
+    "discovery_output_path",
+    "report_output_path",
+    "entity_root_path",
+    "manifest_path",
+    "threads_path",
+    "thread_snapshots_path",
+    "comments_path",
+    "comment_snapshots_path",
+    "signals_path",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -313,7 +333,60 @@ def save_study_record(record: dict[str, Any]) -> None:
     )
 
 
+def resolve_server_path(path_value: str | None) -> Path | None:
+    if not path_value:
+        return None
+
+    raw_path = Path(path_value)
+    remapped_candidates: list[Path] = []
+
+    for legacy_root in LEGACY_SERVER_ROOTS:
+        try:
+            relative = raw_path.relative_to(legacy_root)
+            remapped_candidates.append(SERVER_ROOT / relative)
+        except ValueError:
+            continue
+
+    candidates: list[Path] = list(remapped_candidates)
+    if raw_path.is_absolute():
+        candidates.append(raw_path)
+    else:
+        candidates.append(SERVER_ROOT / raw_path)
+
+    for candidate in candidates:
+        try:
+            if candidate.exists():
+                return candidate
+        except OSError:
+            continue
+
+    return candidates[-1]
+
+
+def rewrite_record_paths(record: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    changed = False
+    source = record.setdefault("source", {})
+    artifacts = record.setdefault("artifacts", {})
+
+    for key in SOURCE_PATH_KEYS:
+        current = source.get(key)
+        resolved = resolve_server_path(current)
+        if resolved and str(resolved) != current:
+            source[key] = str(resolved)
+            changed = True
+
+    for key in ARTIFACT_PATH_KEYS:
+        current = artifacts.get(key)
+        resolved = resolve_server_path(current)
+        if resolved and str(resolved) != current:
+            artifacts[key] = str(resolved)
+            changed = True
+
+    return record, changed
+
+
 def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
+    record, path_rewritten = rewrite_record_paths(record)
     if "schedule" not in record:
         record["schedule"] = {
             "enabled": False,
@@ -350,10 +423,14 @@ def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
         and artifacts.get("manifest_path")
         and source.get("input_path")
     ):
+        if path_rewritten:
+            save_study_record(record)
         return record
 
     input_path = Path(source.get("input_path") or str(DEFAULT_INPUT))
     if not input_path.exists():
+        if path_rewritten:
+            save_study_record(record)
         return record
 
     record = materialize_record(record, input_path)
@@ -454,11 +531,11 @@ def write_study_payload_files(study_id: str, payload: dict[str, Any]) -> tuple[P
 
 
 def load_json_file(path: Path, default: Any) -> Any:
-    if not path.exists():
-        return default
     try:
+        if not path.exists():
+            return default
         return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OSError):
         return default
 
 
@@ -478,7 +555,10 @@ def load_study_config(record: dict[str, Any]) -> dict[str, Any]:
     fallback = build_reddit_config(record["draft"])
     if not config_path:
         return fallback
-    return load_json_file(Path(config_path), fallback)
+    resolved = resolve_server_path(config_path)
+    if not resolved:
+        return fallback
+    return load_json_file(resolved, fallback)
 
 
 def attach_hot_refresh_summary(entity_bundle: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
