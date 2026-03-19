@@ -1141,6 +1141,133 @@ h1, h2, h3, h4, p {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.product-showcase {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.showcase-browser {
+  border-radius: 30px;
+  border: 1px solid rgba(198, 213, 234, 0.9);
+  background: linear-gradient(180deg, #ffffff, #eff5ff);
+  box-shadow: 0 30px 70px rgba(21, 35, 59, 0.14);
+  overflow: hidden;
+}
+
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(245, 249, 255, 0.92);
+}
+
+.browser-bar span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d7e2f4;
+}
+
+.browser-bar span:nth-child(1) { background: #f6a44c; }
+.browser-bar span:nth-child(2) { background: #f1c05f; }
+.browser-bar span:nth-child(3) { background: #77c087; }
+
+.browser-title {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.showcase-canvas {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  min-height: 420px;
+}
+
+.showcase-sidebar {
+  padding: 18px;
+  border-right: 1px solid rgba(198, 213, 234, 0.7);
+  background: linear-gradient(180deg, #f8fbff, #edf3fd);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.showcase-nav-pill {
+  padding: 11px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.showcase-nav-pill.active {
+  background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+  color: #fff;
+  border-color: transparent;
+}
+
+.showcase-main {
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.showcase-hero-card {
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(45, 99, 214, 0.1), transparent 28%),
+    linear-gradient(180deg, #ffffff, #f3f8ff);
+  border: 1px solid var(--line);
+}
+
+.showcase-hero-card h3 {
+  font-size: 30px;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+
+.showcase-mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.showcase-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.showcase-panel {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.showcase-panel strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
+.showcase-copy {
+  display: grid;
+  gap: 12px;
+}
+
 .landing-problem-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1197,6 +1324,14 @@ h1, h2, h3, h4, p {
   gap: 12px;
 }
 
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+}
+
 .site-footer {
   display: flex;
   justify-content: space-between;
@@ -1229,6 +1364,45 @@ h1, h2, h3, h4, p {
   color: var(--muted);
   font-size: 14px;
   font-weight: 700;
+}
+
+.button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button.primary:hover {
+  box-shadow: 0 22px 42px rgba(45, 99, 214, 0.28);
+}
+
+.button.secondary:hover {
+  border-color: #9db8e4;
+  background: #ffffff;
+}
+
+.card,
+.package,
+.insight-card,
+.item,
+.quote,
+.study-card,
+.metric,
+.mini-row,
+.job-row {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.card:hover,
+.package:hover,
+.insight-card:hover,
+.item:hover,
+.quote:hover,
+.study-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 48px rgba(21, 35, 59, 0.12);
 }
 
 .app-footer {
@@ -1275,6 +1449,7 @@ h1, h2, h3, h4, p {
   .landing-hero,
   .landing-grid-4,
   .landing-grid-3,
+  .product-showcase,
   .trust-strip,
   .landing-problem-grid,
   .landing-share,
@@ -1289,6 +1464,12 @@ h1, h2, h3, h4, p {
 
   .landing-contact {
     display: grid;
+  }
+
+  .showcase-canvas,
+  .showcase-lower-grid,
+  .contact-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1340,5 +1521,10 @@ h1, h2, h3, h4, p {
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .landing-proof,
+  .showcase-mini-metrics {
+    grid-template-columns: 1fr 1fr;
   }
 }
