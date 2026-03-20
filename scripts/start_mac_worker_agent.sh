@@ -22,10 +22,32 @@ CHROME_APP="${DEMAND_INTEL_CHROME_APP:-Google Chrome}"
   echo "chrome_app=$CHROME_APP"
 } >> "$LOG_DIR/mac_worker.launcher.log"
 
-exec /usr/bin/python3 "$ROOT_DIR/scripts/mac_worker_agent.py" \
-  --api-base-url "$API_BASE_URL" \
-  --worker-token "$WORKER_TOKEN" \
-  --worker-id "$WORKER_ID" \
-  --worker-name "$WORKER_NAME" \
-  --chrome-app "$CHROME_APP" \
-  --continue-on-error
+shutdown_requested=0
+handle_shutdown() {
+  shutdown_requested=1
+}
+
+trap handle_shutdown TERM INT
+
+while true; do
+  /usr/bin/python3 "$ROOT_DIR/scripts/mac_worker_agent.py" \
+    --api-base-url "$API_BASE_URL" \
+    --worker-token "$WORKER_TOKEN" \
+    --worker-id "$WORKER_ID" \
+    --worker-name "$WORKER_NAME" \
+    --chrome-app "$CHROME_APP" \
+    --continue-on-error
+
+  exit_code=$?
+  if [[ "$shutdown_requested" -eq 1 ]]; then
+    exit 0
+  fi
+
+  {
+    echo "[$(/bin/date '+%Y-%m-%d %H:%M:%S')] worker exited unexpectedly"
+    echo "exit_code=$exit_code"
+    echo "restarting in 5 seconds"
+  } >> "$LOG_DIR/mac_worker.launcher.log"
+
+  /bin/sleep 5
+done

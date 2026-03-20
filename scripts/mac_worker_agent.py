@@ -75,8 +75,62 @@ def request_json(
         raise RuntimeError(f"HTTP {error.code} {path}: {raw}") from error
 
 
+def request_json_with_retries(
+    api_base_url: str,
+    method: str,
+    path: str,
+    worker_token: str,
+    payload: dict[str, Any] | None = None,
+    *,
+    timeout: int = 120,
+    attempts: int = 4,
+    retry_delay: float = 2.0,
+) -> dict[str, Any]:
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return request_json(
+                api_base_url,
+                method,
+                path,
+                worker_token,
+                payload=payload,
+                timeout=timeout,
+            )
+        except Exception as error:  # noqa: BLE001
+            last_error = error
+            if attempt >= attempts:
+                break
+            print(
+                json.dumps(
+                    {
+                        "event": "api_retry",
+                        "path": path,
+                        "method": method,
+                        "attempt": attempt,
+                        "error": str(error),
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            time.sleep(retry_delay)
+    assert last_error is not None
+    raise last_error
+
+
 def fetch_worker_job(api_base_url: str, worker_token: str, job_id: str) -> dict[str, Any]:
-    response = request_json(api_base_url, "GET", f"/api/worker/jobs/{job_id}", worker_token, payload=None, timeout=30)
+    response = request_json_with_retries(
+        api_base_url,
+        "GET",
+        f"/api/worker/jobs/{job_id}",
+        worker_token,
+        payload=None,
+        timeout=30,
+        attempts=3,
+        retry_delay=1.5,
+    )
     return response.get("job") or {}
 
 
@@ -242,17 +296,37 @@ def main() -> None:
     )
 
     while True:
-        claim = request_json(
-            args.api_base_url,
-            "POST",
-            "/api/worker/claim",
-            args.worker_token,
-            payload={
-                "worker_id": args.worker_id,
-                "worker_name": args.worker_name,
-                "capabilities": list(REMOTE_STAGE_KINDS),
-            },
-        )
+        try:
+            claim = request_json_with_retries(
+                args.api_base_url,
+                "POST",
+                "/api/worker/claim",
+                args.worker_token,
+                payload={
+                    "worker_id": args.worker_id,
+                    "worker_name": args.worker_name,
+                    "capabilities": list(REMOTE_STAGE_KINDS),
+                },
+                attempts=3,
+                retry_delay=max(args.poll_seconds, 2.0),
+            )
+        except Exception as error:  # noqa: BLE001
+            print(
+                json.dumps(
+                    {
+                        "event": "claim_failed",
+                        "api_base_url": args.api_base_url,
+                        "error": str(error),
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            if args.once:
+                raise
+            time.sleep(args.poll_seconds)
+            continue
         job = claim.get("job")
         task = claim.get("task")
         if not job or not task:
@@ -285,12 +359,14 @@ def main() -> None:
                 args.worker_token,
                 job_id,
             )
-            request_json(
+            request_json_with_retries(
                 args.api_base_url,
                 "POST",
                 f"/api/worker/jobs/{job_id}/complete",
                 args.worker_token,
                 payload={"rows": rows, "summary": summary},
+                attempts=5,
+                retry_delay=2.0,
             )
             print(
                 json.dumps(
@@ -306,7 +382,7 @@ def main() -> None:
                 flush=True,
             )
         except JobCanceledError as error:
-            request_json(
+            request_json_with_retries(
                 args.api_base_url,
                 "POST",
                 f"/api/worker/jobs/{job_id}/fail",
@@ -319,6 +395,8 @@ def main() -> None:
                         "worker_id": args.worker_id,
                     },
                 },
+                attempts=5,
+                retry_delay=2.0,
             )
             print(
                 json.dumps(
@@ -332,19 +410,37 @@ def main() -> None:
                 flush=True,
             )
         except Exception as error:  # noqa: BLE001
-            request_json(
-                args.api_base_url,
-                "POST",
-                f"/api/worker/jobs/{job_id}/fail",
-                args.worker_token,
-                payload={
-                    "error": str(error),
-                    "context": {
-                        "stage_kind": stage_kind,
-                        "worker_id": args.worker_id,
+            try:
+                request_json_with_retries(
+                    args.api_base_url,
+                    "POST",
+                    f"/api/worker/jobs/{job_id}/fail",
+                    args.worker_token,
+                    payload={
+                        "error": str(error),
+                        "context": {
+                            "stage_kind": stage_kind,
+                            "worker_id": args.worker_id,
+                        },
                     },
-                },
-            )
+                    attempts=5,
+                    retry_delay=2.0,
+                )
+            except Exception as report_error:  # noqa: BLE001
+                print(
+                    json.dumps(
+                        {
+                            "event": "job_failure_report_failed",
+                            "job_id": job_id,
+                            "stage_kind": stage_kind,
+                            "error": str(error),
+                            "report_error": str(report_error),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    file=sys.stderr,
+                    flush=True,
+                )
             print(
                 json.dumps(
                     {
