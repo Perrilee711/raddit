@@ -1559,10 +1559,12 @@ function renderOperations() {
           <div class="small">阶段：${job.stage_label || job.stage_kind || job.mode} · 进度：${job.pipeline_progress || "1/1"} · Pipeline：${job.pipeline_id || "-"}</div>
           <div class="kpi-line">
             <span class="mini-pill">${laneLabel(job.queue_lane)}</span>
+            <span class="mini-pill">${job.execution_target === "mac_worker" ? "Mac Worker" : "Local"}</span>
             <span class="mini-pill ${job.priority_label === "urgent" || job.priority_label === "high" ? "up" : job.priority_label === "low" ? "warn" : ""}">${job.priority_label || "normal"}${job.priority_score ? ` ${job.priority_score}` : ""}</span>
             ${job.queue_action ? `<span class="mini-pill">${job.queue_action}</span>` : ""}
           </div>
           <div class="small">创建：${formatDateTime(job.created_at, "刚刚")} · 完成：${formatDateTime(job.finished_at, "处理中")}</div>
+          ${job.claimed_by_worker_name ? `<div class="small">执行节点：${job.claimed_by_worker_name}</div>` : ""}
           ${job.strategy_reason ? `<div class="small">策略：${job.strategy_reason}</div>` : ""}
           ${job.error ? `<div class="small">错误：${job.error}</div>` : ""}
         </div>
@@ -1619,6 +1621,8 @@ function renderOperations() {
                     <div class="item"><strong>阶段进度</strong><div class="small">${selectedJob.stage_label || selectedJob.stage_kind || selectedJob.mode} · ${selectedJob.pipeline_progress || "1/1"}</div></div>
                     <div class="item"><strong>Pipeline</strong><div class="small">${selectedJob.pipeline_id || "-"}</div></div>
                     <div class="item"><strong>队列车道</strong><div class="small">${laneLabel(selectedJob.queue_lane)} · ${selectedJob.priority_label || "normal"}${selectedJob.priority_score ? ` (${selectedJob.priority_score})` : ""}</div></div>
+                    <div class="item"><strong>执行方式</strong><div class="small">${selectedJob.execution_target === "mac_worker" ? "Mac Worker" : "Local"}</div></div>
+                    ${selectedJob.claimed_by_worker_name ? `<div class="item"><strong>执行节点</strong><div class="small">${selectedJob.claimed_by_worker_name}</div></div>` : ""}
                     <div class="item"><strong>触发方式</strong><div class="small">${selectedJob.trigger}</div></div>
                     ${selectedJob.strategy_reason ? `<div class="item"><strong>编排原因</strong><div class="small">${selectedJob.strategy_reason}</div></div>` : ""}
                     ${selectedJob.queue_action ? `<div class="item"><strong>入队动作</strong><div class="small">${selectedJob.queue_action}</div></div>` : ""}

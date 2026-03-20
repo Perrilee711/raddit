@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 from build_demand_intelligence_payload import build_payload, read_jsonl
 from build_study_entity_store import build_and_write_store
-from hot_thread_policy import summarize_hot_threads
+from hot_thread_policy import rank_hot_threads, summarize_hot_threads
 
 
 STUDY_ID = "fishgoo-us-dropshipping"
@@ -55,10 +55,13 @@ STUDY_REPORT_DIR = SERVER_ROOT / "docs" / "reports" / "studies"
 STUDY_ENTITY_DIR = SERVER_ROOT / "data" / "entities" / "studies"
 JOBS_DIR = SERVER_ROOT / "data" / "jobs"
 USERS_FILE = SERVER_ROOT / "config" / "users.json"
+WORKERS_FILE = SERVER_ROOT / "config" / "workers.json"
 DEFAULT_INPUT = Path("/Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl")
 ROLE_ORDER = {"viewer": 1, "analyst": 2, "admin": 3}
 BROWSER_JOB_MODES = {"browser", "hot_threads"}
 ALL_JOB_MODES = {"seeded", "browser", "hot_threads", "adaptive"}
+REMOTE_STAGE_KINDS = {"discover", "harvest", "refresh_hot"}
+LOCAL_STAGE_KINDS = {"rebuild_aggregates", "publish_brief"}
 QUEUE_LANE_ORDER = {"realtime": 0, "discovery": 1, "maintenance": 2}
 PIPELINE_STAGE_SEQUENCE = {
     "seeded": ["rebuild_aggregates", "publish_brief"],
@@ -198,6 +201,13 @@ def read_users() -> list[dict[str, Any]]:
     return payload.get("users", [])
 
 
+def read_workers() -> list[dict[str, Any]]:
+    if not WORKERS_FILE.exists():
+        return []
+    payload = json.loads(WORKERS_FILE.read_text(encoding="utf-8"))
+    return payload.get("workers", [])
+
+
 def find_user_by_token(token: str | None) -> dict[str, Any] | None:
     if not token:
         return None
@@ -212,6 +222,22 @@ def find_user_by_credentials(email: str, password: str) -> dict[str, Any] | None
         if user.get("email") == email and user.get("password") == password:
             return user
     return None
+
+
+def find_worker_by_token(token: str | None) -> dict[str, Any] | None:
+    if not token:
+        return None
+    for worker in read_workers():
+        if worker.get("enabled", True) and worker.get("token") == token:
+            return worker
+    return None
+
+
+def worker_capabilities(worker: dict[str, Any] | None) -> set[str]:
+    if not worker:
+        return set()
+    capabilities = worker.get("capabilities") or list(REMOTE_STAGE_KINDS)
+    return {str(item) for item in capabilities if str(item)}
 
 
 def parse_cookie_header(raw_cookie: str | None) -> dict[str, str]:
@@ -566,6 +592,12 @@ def load_json_file(path: Path, default: Any) -> Any:
         return default
 
 
+def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
+    path.write_text(body, encoding="utf-8")
+
+
 def load_study_entity_bundle(study_id: str) -> dict[str, Any]:
     return {
         "manifest": load_json_file(study_entity_file(study_id, "manifest"), {}),
@@ -575,6 +607,95 @@ def load_study_entity_bundle(study_id: str) -> dict[str, Any]:
         "comment_snapshots": load_json_file(study_entity_file(study_id, "comment_snapshots"), []),
         "signals": load_json_file(study_entity_file(study_id, "signals"), []),
     }
+
+
+def canonical_row_key(row: dict[str, Any]) -> str:
+    url = str(row.get("url", "")).split("?")[0].strip()
+    if url:
+        return url
+    record_id = str(row.get("id", "")).strip()
+    if record_id:
+        return f"id:{record_id}"
+    thread_id = str(row.get("thread_id", "")).strip()
+    if thread_id:
+        return f"thread:{thread_id}"
+    return str(row.get("title", "")).strip()
+
+
+def merge_stage_rows(existing_rows: list[dict[str, Any]], incoming_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def merge_row(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+        merged = dict(existing)
+        for key, value in incoming.items():
+            if key == "comments":
+                existing_comments = existing.get("comments") or []
+                incoming_comments = value or []
+                merged[key] = incoming_comments if len(incoming_comments) >= len(existing_comments) else existing_comments
+                continue
+            if key in {"score", "num_comments"}:
+                try:
+                    merged[key] = max(int(existing.get(key, 0) or 0), int(value or 0))
+                except (TypeError, ValueError):
+                    merged[key] = value
+                continue
+            if key == "search_term":
+                terms = {
+                    term.strip()
+                    for item in [existing.get("search_term", ""), value]
+                    for term in str(item).split("|")
+                    if term.strip()
+                }
+                merged[key] = " | ".join(sorted(terms))
+                continue
+            if value not in (None, "", []):
+                merged[key] = value
+        return merged
+
+    merged: dict[str, dict[str, Any]] = {canonical_row_key(row): dict(row) for row in existing_rows}
+    for row in incoming_rows:
+        key = canonical_row_key(row)
+        if key in merged:
+            merged[key] = merge_row(merged[key], row)
+        else:
+            merged[key] = dict(row)
+    return list(merged.values())
+
+
+def build_hot_seed_rows(record: dict[str, Any], config: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    entity_bundle = load_study_entity_bundle(record["id"])
+    threads = entity_bundle.get("threads", [])
+    selection = summarize_hot_threads(threads, config)
+    selected = rank_hot_threads(threads, config)[: int((selection.get("thresholds") or {}).get("max_count", 10))]
+    if not selected:
+        return [], selection
+
+    existing_rows = read_jsonl(Path(record.get("source", {}).get("input_path") or study_raw_file(record["id"])))
+    existing_lookup = {canonical_row_key(row): row for row in existing_rows}
+    seeds: list[dict[str, Any]] = []
+    for candidate in selected:
+        existing = existing_lookup.get(candidate["url"]) or existing_lookup.get(f"thread:{candidate['thread_id']}") or {}
+        seed = dict(existing)
+        seed.update(
+            {
+                "thread_id": candidate["thread_id"],
+                "subreddit": seed.get("subreddit") or candidate.get("subreddit", ""),
+                "title": seed.get("title") or candidate.get("title", ""),
+                "url": candidate["url"],
+                "score": max(int(seed.get("score", 0) or 0), int(candidate.get("current_score", 0) or 0)),
+                "num_comments": max(
+                    int(seed.get("num_comments", 0) or 0),
+                    int(candidate.get("current_comment_count", 0) or 0),
+                ),
+                "search_term": " | ".join(candidate.get("search_terms", [])).strip() or seed.get("search_term", ""),
+                "refresh_reason": (
+                    "missing_comments" if candidate.get("needs_comments")
+                    else "stale_hot_thread" if candidate.get("stale")
+                    else "active_hot_thread"
+                ),
+                "hot_score": candidate.get("hot_score", 0),
+            }
+        )
+        seeds.append(seed)
+    return seeds, selection
 
 
 def load_study_config(record: dict[str, Any]) -> dict[str, Any]:
@@ -594,6 +715,125 @@ def attach_hot_refresh_summary(entity_bundle: dict[str, Any], config: dict[str, 
     return entity_bundle
 
 
+def worker_can_execute(worker: dict[str, Any], stage_kind: str) -> bool:
+    return stage_kind in worker_capabilities(worker)
+
+
+def running_remote_job_for_worker(worker_id: str) -> dict[str, Any] | None:
+    for job in list_jobs():
+        if (
+            job.get("status") == "running"
+            and job.get("execution_target") == "mac_worker"
+            and job.get("claimed_by_worker_id") == worker_id
+        ):
+            return job
+    return None
+
+
+def next_claimable_remote_job(worker: dict[str, Any]) -> dict[str, Any] | None:
+    queued_jobs = sorted(
+        [
+            job
+            for job in list_jobs()
+            if job.get("status") == "queued"
+            and (job.get("execution_target") or stage_execution_target(job.get("stage_kind", ""))) == "mac_worker"
+            and worker_can_execute(worker, job.get("stage_kind", ""))
+        ],
+        key=queued_job_sort_key,
+    )
+    return queued_jobs[0] if queued_jobs else None
+
+
+def build_worker_task_payload(job: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    config = load_study_config(record)
+    task: dict[str, Any] = {
+        "job": enrich_job(job),
+        "study": summarize_record(record),
+        "config": config,
+        "stage_kind": job.get("stage_kind"),
+    }
+    stage_kind = job.get("stage_kind")
+    if stage_kind == "discover":
+        task["output_kind"] = "discovery_rows"
+        return task
+    if stage_kind == "harvest":
+        task["output_kind"] = "harvest_rows"
+        task["input_rows"] = read_jsonl(discovery_output_path(record))
+        return task
+    if stage_kind == "refresh_hot":
+        seeds, selection = build_hot_seed_rows(record, config)
+        task["output_kind"] = "hot_refresh_rows"
+        task["input_rows"] = seeds
+        task["selection"] = selection
+        return task
+    raise RuntimeError(f"Unsupported worker stage: {stage_kind}")
+
+
+def claim_remote_job(worker: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    running = running_remote_job_for_worker(worker.get("id", ""))
+    if running:
+        record = load_study_record(running.get("study_id", ""))
+        if record:
+            return running, build_worker_task_payload(running, record)
+    job = next_claimable_remote_job(worker)
+    if not job:
+        return None, None
+    job["status"] = "running"
+    job["started_at"] = job.get("started_at") or now_iso()
+    job["updated_at"] = now_iso()
+    job["claimed_by_worker_id"] = worker.get("id")
+    job["claimed_by_worker_name"] = worker.get("name", worker.get("id", ""))
+    job["worker_claimed_at"] = now_iso()
+    save_job(job)
+    record = load_study_record(job.get("study_id", ""))
+    if not record:
+        raise RuntimeError(f"Study not found: {job.get('study_id')}")
+    return job, build_worker_task_payload(job, record)
+
+
+def apply_worker_stage_result(job: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    record = load_study_record(job["study_id"])
+    if not record:
+        raise RuntimeError(f"Study not found: {job['study_id']}")
+
+    stage_kind = job.get("stage_kind")
+    rows = payload.get("rows") or []
+    summary = payload.get("summary") or {}
+
+    if stage_kind == "discover":
+        output_path = discovery_output_path(record)
+        write_jsonl(output_path, rows)
+        record.setdefault("source", {})["last_discovery_at"] = now_iso()
+        record.setdefault("source", {})["last_discovery_summary"] = summary
+        record.setdefault("artifacts", {})["discovery_output_path"] = str(output_path)
+        save_study_record(record)
+        return record
+
+    if stage_kind == "harvest":
+        output_path = Path(record.get("artifacts", {}).get("raw_output_path") or study_raw_file(record["id"]))
+        write_jsonl(output_path, rows)
+        record.setdefault("source", {})["type"] = "browser_reddit_thread_pipeline"
+        record["source"]["input_path"] = str(output_path)
+        record["source"]["last_harvest_at"] = now_iso()
+        record["source"]["last_harvest_summary"] = summary
+        save_study_record(record)
+        return record
+
+    if stage_kind == "refresh_hot":
+        output_path = Path(record.get("artifacts", {}).get("raw_output_path") or study_raw_file(record["id"]))
+        existing_rows = read_jsonl(Path(record.get("source", {}).get("input_path") or output_path))
+        merged_rows = merge_stage_rows(existing_rows, rows)
+        write_jsonl(output_path, merged_rows)
+        record.setdefault("source", {})["type"] = "browser_reddit_thread_pipeline"
+        record["source"]["input_path"] = str(output_path)
+        record["source"]["last_hot_refresh_at"] = now_iso()
+        record["source"]["last_hot_refresh_summary"] = summary
+        save_study_record(record)
+        return record
+
+    raise RuntimeError(f"Unsupported worker stage result: {stage_kind}")
+
+
 def save_job(job: dict[str, Any]) -> None:
     ensure_support_dirs()
     job_file(job["id"]).write_text(json.dumps(job, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -609,6 +849,7 @@ def load_job(job_id: str) -> dict[str, Any] | None:
 def enrich_job(job: dict[str, Any]) -> dict[str, Any]:
     record = load_study_record(job.get("study_id", ""))
     enriched = dict(job)
+    enriched["execution_target"] = enriched.get("execution_target") or stage_execution_target(enriched.get("stage_kind", ""))
     enriched["study_title"] = (record or {}).get("study", {}).get("title", job.get("study_id", ""))
     enriched["study_market"] = (record or {}).get("study", {}).get("market", "")
     enriched["schedule_enabled"] = (record or {}).get("schedule", {}).get("enabled", False)
@@ -686,6 +927,12 @@ def stage_priority_score(base_priority: int, stage_kind: str) -> int:
     return max(1, min(int(base_priority) + int(STAGE_PRIORITY_OFFSET.get(stage_kind, 0)), 99))
 
 
+def stage_execution_target(stage_kind: str) -> str:
+    if stage_kind in REMOTE_STAGE_KINDS:
+        return "mac_worker"
+    return "local"
+
+
 def choose_adaptive_mode(record: dict[str, Any]) -> tuple[str, str]:
     foundation = record.get("data_foundation", {}) or {}
     hot_refresh = foundation.get("hot_refresh", {}) or {}
@@ -744,6 +991,7 @@ def build_job_plan(record: dict[str, Any], requested_mode: str, trigger: str) ->
         "pipeline_stages": pipeline_stages,
         "stage_kind": first_stage,
         "stage_label": stage_label(first_stage),
+        "execution_target": stage_execution_target(first_stage),
         "queue_lane": stage_lane(first_stage),
         "base_priority_score": priority_score,
         "priority_score": stage_score,
@@ -782,6 +1030,7 @@ def enqueue_job(study_id: str, mode: str, actor: dict[str, Any] | None, trigger:
             queued_job["pipeline_stages"] = plan["pipeline_stages"]
             queued_job["stage_kind"] = plan["stage_kind"]
             queued_job["stage_label"] = plan["stage_label"]
+            queued_job["execution_target"] = plan["execution_target"]
             queued_job["pipeline_stage_index"] = 0
             queued_job["pipeline_stage_total"] = len(plan["pipeline_stages"])
             queued_job["pipeline_progress"] = f"1/{len(plan['pipeline_stages'])}"
@@ -810,6 +1059,7 @@ def enqueue_job(study_id: str, mode: str, actor: dict[str, Any] | None, trigger:
         "pipeline_stages": plan["pipeline_stages"],
         "stage_kind": plan["stage_kind"],
         "stage_label": plan["stage_label"],
+        "execution_target": plan["execution_target"],
         "pipeline_stage_index": 0,
         "pipeline_stage_total": len(plan["pipeline_stages"]),
         "pipeline_progress": f"1/{len(plan['pipeline_stages'])}",
@@ -866,6 +1116,7 @@ def next_stage_job(completed_job: dict[str, Any]) -> dict[str, Any] | None:
         "pipeline_stages": stages,
         "stage_kind": stage_kind,
         "stage_label": stage_label(stage_kind),
+        "execution_target": stage_execution_target(stage_kind),
         "pipeline_stage_index": next_index,
         "pipeline_stage_total": len(stages),
         "pipeline_progress": f"{next_index + 1}/{len(stages)}",
@@ -1143,7 +1394,12 @@ def enqueue_follow_up_job(completed_job: dict[str, Any]) -> dict[str, Any] | Non
 def worker_loop(stop_event: threading.Event) -> None:
     while not stop_event.is_set():
         queued = sorted(
-            [job for job in list_jobs() if job.get("status") == "queued"],
+            [
+                job
+                for job in list_jobs()
+                if job.get("status") == "queued"
+                and (job.get("execution_target") or stage_execution_target(job.get("stage_kind", ""))) == "local"
+            ],
             key=queued_job_sort_key,
         )
         if not queued:
@@ -1591,6 +1847,17 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
         )
         return find_user_by_token(token)
 
+    def current_worker(self) -> dict[str, Any] | None:
+        token = self.headers.get("X-Worker-Token") or parse_bearer_token(self.headers.get("Authorization"))
+        return find_worker_by_token(token)
+
+    def require_worker(self) -> dict[str, Any] | None:
+        worker = self.current_worker()
+        if worker:
+            return worker
+        self.send_json({"error": "worker_auth_required"}, status=401)
+        return None
+
     def require_role(self, minimum_role: str) -> dict[str, Any] | None:
         user = self.current_user()
         if ensure_role(user, minimum_role):
@@ -1677,6 +1944,25 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 {
                     "ok": True,
                     "service": "demand-intelligence-api",
+                    "time": now_iso(),
+                }
+            )
+            return
+
+        if path == "/api/worker/health":
+            worker = self.require_worker()
+            if worker is None:
+                return
+            running_job = running_remote_job_for_worker(worker.get("id", ""))
+            self.send_json(
+                {
+                    "ok": True,
+                    "worker": {
+                        "id": worker.get("id"),
+                        "name": worker.get("name", worker.get("id")),
+                        "capabilities": sorted(worker_capabilities(worker)),
+                    },
+                    "running_job": enrich_job(running_job) if running_job else None,
                     "time": now_iso(),
                 }
             )
@@ -1870,6 +2156,89 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             self.send_json_with_cookie({"ok": True}, "", status=200, expire_cookie=True)
             return
 
+        length = int(self.headers.get("Content-Length", "0") or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        try:
+            payload = json.loads(raw.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            self.send_json({"error": "invalid_json"}, status=400)
+            return
+
+        if path == "/api/worker/claim":
+            worker = self.require_worker()
+            if worker is None:
+                return
+            try:
+                job, task = claim_remote_job(worker)
+            except Exception as error:  # noqa: BLE001
+                self.send_json({"error": "worker_claim_failed", "detail": str(error)}, status=500)
+                return
+            self.send_json(
+                {
+                    "worker": {
+                        "id": worker.get("id"),
+                        "name": worker.get("name", worker.get("id")),
+                        "capabilities": sorted(worker_capabilities(worker)),
+                    },
+                    "job": enrich_job(job) if job else None,
+                    "task": task,
+                }
+            )
+            return
+
+        if path.startswith("/api/worker/jobs/") and path.endswith("/complete"):
+            worker = self.require_worker()
+            if worker is None:
+                return
+            job_id = path.split("/")[4] if len(path.split("/")) > 4 else ""
+            job = load_job(job_id)
+            if not job:
+                self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
+                return
+            if job.get("status") != "running":
+                self.send_json({"error": "job_not_running", "status": job.get("status")}, status=409)
+                return
+            if job.get("claimed_by_worker_id") != worker.get("id"):
+                self.send_json({"error": "job_claim_mismatch", "worker_id": worker.get("id")}, status=409)
+                return
+            try:
+                apply_worker_stage_result(job, payload)
+            except Exception as error:  # noqa: BLE001
+                self.send_json({"error": "worker_result_failed", "detail": str(error)}, status=500)
+                return
+            job["status"] = "completed"
+            job["finished_at"] = now_iso()
+            job["updated_at"] = now_iso()
+            job["result_summary"] = payload.get("summary") or {}
+            save_job(job)
+            follow_up = enqueue_follow_up_job(job)
+            self.send_json({"completed": True, "job": enrich_job(job), "follow_up_job": enrich_job(follow_up) if follow_up else None})
+            return
+
+        if path.startswith("/api/worker/jobs/") and path.endswith("/fail"):
+            worker = self.require_worker()
+            if worker is None:
+                return
+            job_id = path.split("/")[4] if len(path.split("/")) > 4 else ""
+            job = load_job(job_id)
+            if not job:
+                self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
+                return
+            if job.get("status") != "running":
+                self.send_json({"error": "job_not_running", "status": job.get("status")}, status=409)
+                return
+            if job.get("claimed_by_worker_id") != worker.get("id"):
+                self.send_json({"error": "job_claim_mismatch", "worker_id": worker.get("id")}, status=409)
+                return
+            job["status"] = "failed"
+            job["finished_at"] = now_iso()
+            job["updated_at"] = now_iso()
+            job["error"] = str(payload.get("error") or "remote_worker_failed")
+            job["failure_context"] = payload.get("context") or {}
+            save_job(job)
+            self.send_json({"failed": True, "job": enrich_job(job)})
+            return
+
         if path.startswith("/api/jobs/") and path.endswith("/retry"):
             user = self.require_role("analyst")
             if user is None:
@@ -1908,14 +2277,6 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
 
         if path not in {"/api/studies/draft", "/api/studies"} and not path.startswith("/api/studies/"):
             self.send_json({"error": "route_not_found", "path": path}, status=404)
-            return
-
-        length = int(self.headers.get("Content-Length", "0") or 0)
-        raw = self.rfile.read(length) if length else b"{}"
-        try:
-            payload = json.loads(raw.decode("utf-8") or "{}")
-        except json.JSONDecodeError:
-            self.send_json({"error": "invalid_json"}, status=400)
             return
 
         if path == "/api/studies/draft":

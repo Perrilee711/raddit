@@ -175,6 +175,10 @@ API 版本命令：
 - `/api/auth/me`
 - `/api/auth/login`
 - `/api/auth/logout`
+- `/api/worker/health`
+- `/api/worker/claim`
+- `/api/worker/jobs/<jobId>/complete`
+- `/api/worker/jobs/<jobId>/fail`
 - `/api/jobs`
 - `/api/jobs/<jobId>`
 - `/api/jobs/<jobId>/retry`
@@ -217,6 +221,53 @@ study 会写到：
 4. 查看每个 study 的任务历史、调度状态和数据来源映射
 5. 在 Dashboard / Weekly Brief 里查看趋势时间序列，而不只是静态快照
 6. 通过 `threads/comments/signals` API 检查当前 study 的数据新鲜度、评论覆盖率和实体底座状态
+
+## Solution A / A2：Mac Worker 联通
+
+如果前端和 API 已经部署到公网服务器，但 Reddit 采集仍然依赖 `Chrome + AppleScript`，可以启用混合部署：
+
+- 公网 API：队列、study、聚合与发布
+- Mac Worker：只负责 `discover / harvest / refresh_hot`
+
+Mac Worker 轮询的核心接口：
+
+- `POST /api/worker/claim`
+- `POST /api/worker/jobs/<jobId>/complete`
+- `POST /api/worker/jobs/<jobId>/fail`
+- `GET /api/worker/health`
+
+Worker 认证配置在：
+
+- `config/workers.json`
+
+默认内置的 worker：
+
+- `id`: `fishgoo-mac-worker`
+- `token`: `fishgoo-mac-worker-token`
+
+启动 Mac Worker：
+
+```bash
+/usr/bin/python3 scripts/mac_worker_agent.py \
+  --api-base-url http://43.162.90.26 \
+  --worker-token fishgoo-mac-worker-token \
+  --worker-id fishgoo-mac-worker \
+  --continue-on-error
+```
+
+如果要在 Mac 上常驻运行：
+
+```bash
+./scripts/install_mac_worker_launch_agent.sh
+./scripts/status_mac_worker_launch_agent.sh
+```
+
+其中：
+
+- `scripts/start_mac_worker_agent.sh`：Worker 启动脚本
+- `scripts/install_mac_worker_launch_agent.sh`：安装 LaunchAgent
+- `scripts/status_mac_worker_launch_agent.sh`：查看 Worker 状态
+- `scripts/uninstall_mac_worker_launch_agent.sh`：卸载 Worker LaunchAgent
 
 ## Phase 2：Thread + Comment 采集
 

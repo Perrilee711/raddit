@@ -1,0 +1,15 @@
+{
+  "workers": [
+    {
+      "id": "fishgoo-mac-worker",
+      "name": "Fishgoo Mac Worker",
+      "token": "fishgoo-mac-worker-token",
+      "enabled": true,
+      "capabilities": [
+        "discover",
+        "harvest",
+        "refresh_hot"
+      ]
+    }
+  ]
+}
