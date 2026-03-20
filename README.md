@@ -269,6 +269,32 @@ Worker 认证配置在：
 - `scripts/status_mac_worker_launch_agent.sh`：查看 Worker 状态
 - `scripts/uninstall_mac_worker_launch_agent.sh`：卸载 Worker LaunchAgent
 
+## Solution A / A3：团队正式工作流
+
+当公网 API 和 Mac Worker 都在线后，系统会进入默认的团队工作流：
+
+- 云上 API 负责发任务、保存 study、聚合结果、发布前端 payload
+- Mac Worker 负责 `discover / harvest / refresh_hot`
+- `rebuild_aggregates / publish_brief` 留在 API 节点本地执行
+
+新增运行时接口：
+
+- `GET /api/runtime`
+
+这个接口会返回：
+
+- 当前是否 `hybrid_ready`
+- 在线 Worker 数量
+- 默认首跑模式：`browser`
+- 默认自动调度模式：`adaptive`
+- 当前工作流说明：`云上发任务，Mac 自动执行浏览器采集，结果聚合后自动回写前端`
+
+工作流规则：
+
+- 新建 study：默认 `browser` 首跑，后续自动调度切回 `adaptive`
+- 已开启但仍是 `seeded` 的旧 study：当 Mac Worker 连上后，会自动升级到 `adaptive`
+- 如果 Mac Worker 不在线，`adaptive` 会自动回退成 `seeded`，避免把远程任务卡死在队列里
+
 ## Phase 2：Thread + Comment 采集
 
 当前浏览器链路已经升级成两段式：

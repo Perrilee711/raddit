@@ -54,6 +54,8 @@ STUDY_RAW_DIR = SERVER_ROOT / "data" / "raw" / "studies"
 STUDY_REPORT_DIR = SERVER_ROOT / "docs" / "reports" / "studies"
 STUDY_ENTITY_DIR = SERVER_ROOT / "data" / "entities" / "studies"
 JOBS_DIR = SERVER_ROOT / "data" / "jobs"
+RUNTIME_STATE_DIR = SERVER_ROOT / "data" / "runtime" / "state"
+WORKER_STATE_DIR = RUNTIME_STATE_DIR / "workers"
 USERS_FILE = SERVER_ROOT / "config" / "users.json"
 WORKERS_FILE = SERVER_ROOT / "config" / "workers.json"
 DEFAULT_INPUT = Path("/Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl")
@@ -90,6 +92,7 @@ STAGE_LABELS = {
     "publish_brief": "publish_brief",
 }
 JOB_DISPLAY_COMPLETED_WINDOW_HOURS = 24
+WORKER_HEARTBEAT_STALE_SECONDS = 90
 LEGACY_SERVER_ROOTS = [
     Path("/Users/perrilee/Desktop/探索/raddit"),
     Path.home() / "raddit-service",
@@ -240,6 +243,102 @@ def worker_capabilities(worker: dict[str, Any] | None) -> set[str]:
     return {str(item) for item in capabilities if str(item)}
 
 
+def worker_state_file(worker_id: str) -> Path:
+    return WORKER_STATE_DIR / f"{worker_id}.json"
+
+
+def load_worker_runtime_state(worker_id: str) -> dict[str, Any]:
+    return load_json_file(worker_state_file(worker_id), {})
+
+
+def save_worker_runtime_state(worker_id: str, payload: dict[str, Any]) -> None:
+    ensure_support_dirs()
+    worker_state_file(worker_id).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def record_worker_heartbeat(worker: dict[str, Any], event: str = "heartbeat") -> dict[str, Any]:
+    worker_id = str(worker.get("id", "")).strip()
+    if not worker_id:
+        return {}
+    state = load_worker_runtime_state(worker_id)
+    state.update(
+        {
+            "worker_id": worker_id,
+            "worker_name": worker.get("name", worker_id),
+            "capabilities": sorted(worker_capabilities(worker)),
+            "enabled": bool(worker.get("enabled", True)),
+            "last_seen_at": now_iso(),
+            "last_event": event,
+        }
+    )
+    save_worker_runtime_state(worker_id, state)
+    return state
+
+
+def worker_summary(worker: dict[str, Any]) -> dict[str, Any]:
+    worker_id = str(worker.get("id", "")).strip()
+    capabilities = sorted(worker_capabilities(worker))
+    state = load_worker_runtime_state(worker_id) if worker_id else {}
+    last_seen_at = state.get("last_seen_at")
+    last_seen = parse_iso(last_seen_at)
+    seconds_since_last_seen = None
+    status = "offline"
+    if last_seen:
+        seconds_since_last_seen = max(int((datetime.now() - last_seen).total_seconds()), 0)
+        status = "connected" if seconds_since_last_seen <= WORKER_HEARTBEAT_STALE_SECONDS else "stale"
+    running_job = running_remote_job_for_worker(worker_id) if worker_id else None
+    return {
+        "id": worker_id,
+        "name": worker.get("name", worker_id),
+        "enabled": bool(worker.get("enabled", True)),
+        "capabilities": capabilities,
+        "last_seen_at": last_seen_at,
+        "seconds_since_last_seen": seconds_since_last_seen,
+        "status": status,
+        "last_event": state.get("last_event"),
+        "running_job_id": (running_job or {}).get("id"),
+        "running_stage_kind": (running_job or {}).get("stage_kind"),
+    }
+
+
+def list_worker_summaries() -> list[dict[str, Any]]:
+    return [worker_summary(worker) for worker in read_workers() if worker.get("enabled", True)]
+
+
+def has_available_remote_worker(stage_kind: str | None = None) -> bool:
+    for summary in list_worker_summaries():
+        if summary.get("status") != "connected":
+            continue
+        capabilities = set(summary.get("capabilities", []))
+        if stage_kind:
+            if stage_kind in capabilities:
+                return True
+        elif capabilities & REMOTE_STAGE_KINDS:
+            return True
+    return False
+
+
+def hybrid_runtime_summary() -> dict[str, Any]:
+    workers = list_worker_summaries()
+    connected_workers = [worker for worker in workers if worker.get("status") == "connected"]
+    return {
+        "mode": "hybrid_solution_a",
+        "hybrid_ready": bool(connected_workers),
+        "dispatch_model": "cloud_api_dispatch",
+        "browser_execution": "mac_worker",
+        "aggregation_execution": "api_local_worker",
+        "recommended_first_run_mode": "browser",
+        "recommended_schedule_mode": "adaptive",
+        "workflow_summary": "云上发任务，Mac 自动执行浏览器采集，结果聚合后自动回写前端。",
+        "connected_worker_count": len(connected_workers),
+        "worker_count": len(workers),
+        "workers": workers,
+    }
+
+
 def parse_cookie_header(raw_cookie: str | None) -> dict[str, str]:
     if not raw_cookie:
         return {}
@@ -336,6 +435,7 @@ def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
     freshness = data_foundation.get("freshness", {})
     coverage = data_foundation.get("coverage", {})
     hot_refresh = data_foundation.get("hot_refresh", {})
+    runtime = hybrid_runtime_summary()
     return {
         "id": record["id"],
         "title": record["study"]["title"],
@@ -375,6 +475,15 @@ def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
         "hot_thread_selected_count": hot_refresh.get("selected_count", 0),
         "hot_thread_stale_count": hot_refresh.get("stale_candidate_count", 0),
         "hot_thread_recommended_mode": hot_refresh.get("recommended_mode", "browser"),
+        "workflow": {
+            "dispatch_model": runtime.get("dispatch_model"),
+            "browser_execution": runtime.get("browser_execution"),
+            "aggregation_execution": runtime.get("aggregation_execution"),
+            "recommended_schedule_mode": runtime.get("recommended_schedule_mode"),
+            "hybrid_ready": runtime.get("hybrid_ready", False),
+            "connected_worker_count": runtime.get("connected_worker_count", 0),
+            "description": runtime.get("workflow_summary"),
+        },
     }
 
 
@@ -440,6 +549,7 @@ def rewrite_record_paths(record: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 
 def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
     record, path_rewritten = rewrite_record_paths(record)
+    schedule_rewritten = False
     if "schedule" not in record:
         record["schedule"] = {
             "enabled": False,
@@ -448,6 +558,24 @@ def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
             "last_run_at": None,
             "next_run_at": None,
         }
+    schedule = record.get("schedule", {})
+    supports_remote_browser = bool(
+        record.get("artifacts", {}).get("config_path")
+        or record.get("source", {}).get("browser_config_path")
+    )
+    if (
+        schedule.get("enabled")
+        and schedule.get("mode") == "seeded"
+        and supports_remote_browser
+        and has_available_remote_worker("discover")
+    ):
+        schedule["mode"] = "adaptive"
+        if not has_active_job(record["id"]):
+            foundation = record.get("data_foundation", {}) or {}
+            if foundation.get("comment_capture_state") in {"thread_only", "partial"} or int(foundation.get("comment_count", 0) or 0) == 0:
+                schedule["next_run_at"] = now_iso()
+        record["schedule"] = schedule
+        schedule_rewritten = True
     artifacts = record.get("artifacts", {})
     source = record.get("source", {})
     if artifacts.get("manifest_path") and not record.get("data_foundation"):
@@ -476,13 +604,13 @@ def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
         and artifacts.get("manifest_path")
         and source.get("input_path")
     ):
-        if path_rewritten:
+        if path_rewritten or schedule_rewritten:
             save_study_record(record)
         return record
 
     input_path = Path(source.get("input_path") or str(DEFAULT_INPUT))
     if not input_path.exists():
-        if path_rewritten:
+        if path_rewritten or schedule_rewritten:
             save_study_record(record)
         return record
 
@@ -562,7 +690,17 @@ def build_reddit_config(draft: dict[str, Any]) -> dict[str, Any]:
 
 
 def ensure_support_dirs() -> None:
-    for path in [STUDIES_DIR, STUDY_CONFIG_DIR, STUDY_PRODUCT_DATA_DIR, STUDY_RAW_DIR, STUDY_REPORT_DIR, STUDY_ENTITY_DIR, JOBS_DIR]:
+    for path in [
+        STUDIES_DIR,
+        STUDY_CONFIG_DIR,
+        STUDY_PRODUCT_DATA_DIR,
+        STUDY_RAW_DIR,
+        STUDY_REPORT_DIR,
+        STUDY_ENTITY_DIR,
+        JOBS_DIR,
+        RUNTIME_STATE_DIR,
+        WORKER_STATE_DIR,
+    ]:
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -936,6 +1074,8 @@ def stage_execution_target(stage_kind: str) -> str:
 def choose_adaptive_mode(record: dict[str, Any]) -> tuple[str, str]:
     foundation = record.get("data_foundation", {}) or {}
     hot_refresh = foundation.get("hot_refresh", {}) or {}
+    if not has_available_remote_worker():
+        return "seeded", "远程 Mac Worker 未连接，暂时回退为 seeded 重建；连接后会自动恢复 thread/comment 刷新。"
     if hot_refresh.get("selected_count", 0) > 0 and hot_refresh.get("recommended_mode") == "hot_threads":
         return "hot_threads", "存在高价值 stale thread，优先增量刷新评论和热度。"
     if foundation.get("comment_capture_state") in {"thread_only", "partial"}:
@@ -1953,6 +2093,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             worker = self.require_worker()
             if worker is None:
                 return
+            record_worker_heartbeat(worker, event="health")
             running_job = running_remote_job_for_worker(worker.get("id", ""))
             self.send_json(
                 {
@@ -1973,6 +2114,13 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             self.send_json({"user": sanitize_user(user)})
             return
 
+        if path == "/api/runtime":
+            user = self.require_role("viewer")
+            if user is None:
+                return
+            self.send_json(hybrid_runtime_summary())
+            return
+
         if path == "/api/study-template":
             self.send_json(self.api_bundle["study_template"])
             return
@@ -1980,7 +2128,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
         if path == "/api/studies":
             studies = [summarize_record(record) for record in list_study_records()]
             active_study_id = studies[0]["id"] if studies else STUDY_ID
-            self.send_json({"studies": studies, "active_study_id": active_study_id})
+            self.send_json({"studies": studies, "active_study_id": active_study_id, "runtime": hybrid_runtime_summary()})
             return
 
         if path == "/api/jobs":
@@ -2168,6 +2316,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             worker = self.require_worker()
             if worker is None:
                 return
+            record_worker_heartbeat(worker, event="claim")
             try:
                 job, task = claim_remote_job(worker)
             except Exception as error:  # noqa: BLE001
@@ -2190,6 +2339,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             worker = self.require_worker()
             if worker is None:
                 return
+            record_worker_heartbeat(worker, event="complete")
             job_id = path.split("/")[4] if len(path.split("/")) > 4 else ""
             job = load_job(job_id)
             if not job:
@@ -2219,6 +2369,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             worker = self.require_worker()
             if worker is None:
                 return
+            record_worker_heartbeat(worker, event="fail")
             job_id = path.split("/")[4] if len(path.split("/")) > 4 else ""
             job = load_job(job_id)
             if not job:
@@ -2303,6 +2454,9 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": mode}, status=400)
                 return
+            if mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
+                self.send_json({"error": "remote_worker_unavailable", "mode": mode}, status=409)
+                return
             if mode_requires_admin(mode) and not ensure_role(user, "admin"):
                 self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
                 return
@@ -2327,9 +2481,21 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 return
             interval = max(int(payload.get("interval_hours", 24) or 24), 1)
             enabled = bool(payload.get("enabled", False))
-            mode = payload.get("mode", "adaptive")
+            requested_mode = payload.get("mode", "adaptive")
+            mode = requested_mode
             if mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": mode}, status=400)
+                return
+            normalization = None
+            if enabled and mode == "seeded" and has_available_remote_worker("discover"):
+                mode = "adaptive"
+                normalization = {
+                    "from": "seeded",
+                    "to": "adaptive",
+                    "reason": "检测到已连接的 Mac Worker，已切回 adaptive 正式工作流。",
+                }
+            if enabled and mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
+                self.send_json({"error": "remote_worker_unavailable", "mode": mode}, status=409)
                 return
             if mode_requires_admin(mode) and not ensure_role(user, "admin"):
                 self.send_json({"error": "forbidden", "required_role": "admin", "current_role": user.get("role")}, status=403)
@@ -2349,7 +2515,15 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             queued_job = None
             if enabled and start_now and not has_active_job(study_id):
                 queued_job = enqueue_job(study_id, mode, actor=user, trigger="schedule")
-            self.send_json({"study": summarize_record(record), "schedule": record["schedule"], "queued_job": queued_job})
+            self.send_json(
+                {
+                    "study": summarize_record(record),
+                    "schedule": record["schedule"],
+                    "queued_job": queued_job,
+                    "normalization": normalization,
+                    "requested_mode": requested_mode,
+                }
+            )
             return
 
         user = self.require_role("analyst")
@@ -2388,6 +2562,14 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 return
             if schedule_mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": schedule_mode}, status=400)
+                return
+            if initial_mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
+                self.send_json({"error": "remote_worker_unavailable", "mode": initial_mode}, status=409)
+                return
+            if enable_schedule and schedule_mode == "seeded" and has_available_remote_worker("discover"):
+                schedule_mode = "adaptive"
+            if enable_schedule and schedule_mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
+                self.send_json({"error": "remote_worker_unavailable", "mode": schedule_mode}, status=409)
                 return
             if mode_requires_admin(initial_mode) or mode_requires_admin(schedule_mode):
                 if not ensure_role(user, "admin"):

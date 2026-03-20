@@ -289,6 +289,19 @@ let currentSchedule = {
   last_run_at: null,
   next_run_at: null,
 };
+let runtimeStatus = {
+  mode: "hybrid_solution_a",
+  hybrid_ready: false,
+  dispatch_model: "cloud_api_dispatch",
+  browser_execution: "mac_worker",
+  aggregation_execution: "api_local_worker",
+  recommended_first_run_mode: "browser",
+  recommended_schedule_mode: "adaptive",
+  workflow_summary: "云上发任务，Mac 自动执行浏览器采集，结果聚合后自动回写前端。",
+  connected_worker_count: 0,
+  worker_count: 0,
+  workers: [],
+};
 let refreshMode = "adaptive";
 let pollTimer = null;
 let lastKnownActiveJobCount = 0;
@@ -595,12 +608,20 @@ async function apiFetchJson(url, options = {}) {
 
 function renderMeta() {
   const meta = document.getElementById("meta-pills");
-  meta.innerHTML = [
+  const pills = [
     `研究主题：${appData.study.topic}`,
     `数据范围：${appData.study.dateRange}`,
     `上次更新：${appData.study.updatedAt}`,
     `Confidence：${appData.study.confidence}`,
-  ]
+  ];
+  if (apiAvailable) {
+    pills.push(
+      runtimeStatus.hybrid_ready
+        ? `工作流：云上调度 · Mac 执行 × ${runtimeStatus.connected_worker_count}`
+        : "工作流：等待 Mac Worker 连接"
+    );
+  }
+  meta.innerHTML = pills
     .map((text) => `<div class="pill">${text}</div>`)
     .join("");
 }
@@ -621,6 +642,11 @@ function renderAuthPanel() {
       <span>当前角色</span>
       <strong>${authUser.name}</strong>
       <span>${authUser.role}</span>
+    </div>
+    <div class="auth-card ${runtimeStatus.hybrid_ready ? "is-success" : "is-warning"}">
+      <span>A3 工作流</span>
+      <strong>${runtimeStatus.hybrid_ready ? "云上调度 · Mac 执行" : "等待 Worker"}</strong>
+      <span>${runtimeStatus.hybrid_ready ? `${runtimeStatus.connected_worker_count} 台在线` : "采集链暂未就绪"}</span>
     </div>
   `;
 }
@@ -662,6 +688,7 @@ function renderStudyRail() {
             <span class="mini-pill">${study.lead_package || "No package yet"}</span>
             <span class="mini-pill">${study.primary_goal || "未设置目标"}</span>
             <span class="mini-pill">${study.schedule?.enabled ? `Auto ${study.schedule.interval_hours}h · ${modeLabel(study.schedule.mode)}` : "Manual only"}</span>
+            <span class="mini-pill ${study.workflow?.hybrid_ready ? "up" : "warn"}">${study.workflow?.hybrid_ready ? `Cloud → Mac × ${study.workflow.connected_worker_count || 0}` : "Worker pending"}</span>
             ${study.active_job_count ? `<span class="mini-pill up">${study.active_job_count} running</span>` : ""}
             ${study.active_queue_lane ? `<span class="mini-pill">${laneLabel(study.active_queue_lane)}</span>` : ""}
             ${study.active_priority_label ? `<span class="mini-pill warn">${study.active_priority_label}</span>` : ""}
@@ -1268,6 +1295,16 @@ function renderStudySetup() {
     )
     .join("");
   const crawlCost = state.crawl_cost_estimate || estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
+  const workflowStatusMarkup = `
+    <div class="workflow-banner ${runtimeStatus.hybrid_ready ? "is-ready" : "is-pending"}">
+      <strong>${runtimeStatus.hybrid_ready ? "正式团队工作流已就绪" : "正式团队工作流待就绪"}</strong>
+      <div class="small">${runtimeStatus.workflow_summary || "云上发任务，Mac Worker 执行浏览器采集，结果自动回写前端。"}${
+        runtimeStatus.hybrid_ready
+          ? ` 当前在线 ${runtimeStatus.connected_worker_count} 台 Worker。`
+          : " 连接 Worker 后，schedule 会默认进入 adaptive 正式工作流。"
+      }</div>
+    </div>
+  `;
 
   document.getElementById("view-setup").innerHTML = `
     <section class="hero">
@@ -1367,6 +1404,7 @@ function renderStudySetup() {
           <div><div class="label orange">系统建议</div><h2>自动生成研究范围</h2></div>
           <p>系统会回一份 study draft，帮助负责人更快决定该研究什么，而不是先陷入抓取细节。</p>
         </div>
+        ${workflowStatusMarkup}
         <div id="study-draft-panel">
           ${studyDraftMarkup(latestStudyDraft)}
         </div>
@@ -1382,10 +1420,10 @@ function renderStudySetup() {
           <label class="field">
             <span>运行模式</span>
             <select name="mode">
-              <option value="adaptive" ${currentSchedule.mode === "adaptive" ? "selected" : ""}>adaptive</option>
-              <option value="seeded" ${currentSchedule.mode === "seeded" ? "selected" : ""}>seeded</option>
-              <option value="browser" ${currentSchedule.mode === "browser" ? "selected" : ""}>browser</option>
-              <option value="hot_threads" ${currentSchedule.mode === "hot_threads" ? "selected" : ""}>hot_threads</option>
+              <option value="adaptive" ${currentSchedule.mode === "adaptive" ? "selected" : ""}>adaptive（推荐）</option>
+              <option value="seeded" ${currentSchedule.mode === "seeded" ? "selected" : ""}>seeded（仅轻量重建）</option>
+              <option value="browser" ${currentSchedule.mode === "browser" ? "selected" : ""}>browser（完整发现）</option>
+              <option value="hot_threads" ${currentSchedule.mode === "hot_threads" ? "selected" : ""}>hot_threads（热点增量）</option>
             </select>
           </label>
           <label class="field">
@@ -2203,7 +2241,9 @@ function bindEvents() {
       };
       try {
         const response = await updateScheduleForStudy(payload);
-        if (response?.queued_job) {
+        if (response?.normalization) {
+          showToast("调度已切回正式工作流", response.normalization.reason || "系统已自动改成 adaptive。", "success");
+        } else if (response?.queued_job) {
           showToast("已保存调度配置", "调度已开启，并已立即排队一轮更新。", "success");
         } else {
           showToast("已保存调度配置", "新的调度规则已生效。", "success");
@@ -2237,6 +2277,11 @@ async function loadStudyList() {
     return null;
   }
   return apiFetchJson("/api/studies");
+}
+
+async function loadRuntimeStatus() {
+  if (!isHttpMode()) return runtimeStatus;
+  return apiFetchJson("/api/runtime");
 }
 
 async function createStudyDraft(payload) {
@@ -2480,6 +2525,9 @@ async function refreshStudyList() {
     if (response?.studies) {
       studyList = response.studies;
     }
+    if (response?.runtime) {
+      runtimeStatus = response.runtime;
+    }
   } catch (error) {
     console.warn("Study list fallback:", error);
   }
@@ -2562,6 +2610,15 @@ async function init() {
     apiAvailable = false;
     console.warn("Falling back to local payload:", error);
     appData = resolveAppData();
+  }
+
+  try {
+    const runtime = await loadRuntimeStatus();
+    if (runtime) {
+      runtimeStatus = runtime;
+    }
+  } catch (error) {
+    console.warn("Runtime status fallback:", error);
   }
 
   try {

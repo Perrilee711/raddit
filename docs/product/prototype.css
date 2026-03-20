@@ -153,6 +153,18 @@ h1, h2, h3, h4, p {
   color: var(--ink);
 }
 
+.auth-card.is-success {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+}
+
+.auth-card.is-warning {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+}
+
 .toast-stack {
   position: fixed;
   right: 18px;
@@ -894,6 +906,31 @@ h1, h2, h3, h4, p {
   border: 1px solid var(--line);
   background: rgba(248, 250, 252, 0.82);
   gap: 14px;
+}
+
+.workflow-banner {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--ink-soft);
+}
+
+.workflow-banner strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.workflow-banner.is-ready {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(239, 246, 255, 0.94);
+}
+
+.workflow-banner.is-pending {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: rgba(255, 247, 237, 0.94);
 }
 
 .field span {
