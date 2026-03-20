@@ -6,8 +6,14 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 HOST="${DEMAND_INTEL_HOST:-0.0.0.0}"
 PORT="${DEMAND_INTEL_PORT:-8765}"
-INPUT_PATH="${DEMAND_INTEL_INPUT:-$PROJECT_ROOT/data/raw/studies/fishgoo-us-dropshipping.jsonl}"
+DEFAULT_INPUT="$PROJECT_ROOT/data/raw/studies/fishgoo-us-dropshipping.jsonl"
+FALLBACK_INPUT="$PROJECT_ROOT/data/examples/reddit_posts_demo.jsonl"
+INPUT_PATH="${DEMAND_INTEL_INPUT:-$DEFAULT_INPUT}"
 CORS_ORIGINS="${DEMAND_INTEL_CORS_ORIGINS:-https://skill-deploy-jr9bh4v87v.vercel.app}"
+
+if [ ! -f "$INPUT_PATH" ]; then
+  INPUT_PATH="$FALLBACK_INPUT"
+fi
 
 cd "$PROJECT_ROOT"
 
