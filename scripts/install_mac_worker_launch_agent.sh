@@ -17,7 +17,8 @@ copy_tree() {
   fi
   /bin/mkdir -p "$(/usr/bin/dirname "$SERVICE_ROOT/$relative_path")"
   /bin/rm -rf "$SERVICE_ROOT/$relative_path"
-  /bin/cp -R "$SOURCE_ROOT/$relative_path" "$SERVICE_ROOT/$relative_path"
+  /bin/mkdir -p "$SERVICE_ROOT/$relative_path"
+  /bin/cp -R "$SOURCE_ROOT/$relative_path/." "$SERVICE_ROOT/$relative_path"
 }
 
 bootstrap_tree_if_missing() {
@@ -26,7 +27,8 @@ bootstrap_tree_if_missing() {
     return
   fi
   /bin/mkdir -p "$(/usr/bin/dirname "$SERVICE_ROOT/$relative_path")"
-  /bin/cp -R "$SOURCE_ROOT/$relative_path" "$SERVICE_ROOT/$relative_path"
+  /bin/mkdir -p "$SERVICE_ROOT/$relative_path"
+  /bin/cp -R "$SOURCE_ROOT/$relative_path/." "$SERVICE_ROOT/$relative_path"
 }
 
 copy_file() {

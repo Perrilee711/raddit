@@ -94,6 +94,8 @@ STAGE_LABELS = {
 JOB_DISPLAY_COMPLETED_WINDOW_HOURS = 24
 ACTIVE_JOB_STATUSES = {"queued", "running", "canceling"}
 WORKER_HEARTBEAT_STALE_SECONDS = 90
+RUNTIME_ALERT_FAILURE_WINDOW_HOURS = 12
+RUNTIME_ALERT_MAX_FAILURES = 3
 LEGACY_SERVER_ROOTS = [
     Path("/Users/perrilee/Desktop/探索/raddit"),
     Path.home() / "raddit-service",
@@ -325,7 +327,7 @@ def has_available_remote_worker(stage_kind: str | None = None) -> bool:
 def hybrid_runtime_summary() -> dict[str, Any]:
     workers = list_worker_summaries()
     connected_workers = [worker for worker in workers if worker.get("status") == "connected"]
-    return {
+    summary = {
         "mode": "hybrid_solution_a",
         "hybrid_ready": bool(connected_workers),
         "dispatch_model": "cloud_api_dispatch",
@@ -338,6 +340,8 @@ def hybrid_runtime_summary() -> dict[str, Any]:
         "worker_count": len(workers),
         "workers": workers,
     }
+    summary.update(runtime_alerts_summary(workers))
+    return summary
 
 
 def parse_cookie_header(raw_cookie: str | None) -> dict[str, str]:
@@ -1038,6 +1042,111 @@ def list_visible_jobs(study_id: str | None = None, limit: int = 50) -> list[dict
 
 def list_jobs_for_study(study_id: str) -> list[dict[str, Any]]:
     return [job for job in list_jobs() if job.get("study_id") == study_id]
+
+
+def recent_failed_jobs(window_hours: int = RUNTIME_ALERT_FAILURE_WINDOW_HOURS, limit: int = RUNTIME_ALERT_MAX_FAILURES) -> list[dict[str, Any]]:
+    cutoff = datetime.now() - timedelta(hours=window_hours)
+    failures = []
+    for job in list_jobs():
+        if job.get("status") != "failed":
+            continue
+        finished_at = parse_iso(job.get("finished_at") or job.get("updated_at") or job.get("created_at"))
+        if finished_at and finished_at < cutoff:
+            continue
+        failures.append(enrich_job(job))
+    return failures[:limit]
+
+
+def runtime_alerts_summary(workers: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    worker_summaries = workers if workers is not None else list_worker_summaries()
+    connected_workers = [worker for worker in worker_summaries if worker.get("status") == "connected"]
+    stale_workers = [worker for worker in worker_summaries if worker.get("status") == "stale"]
+    offline_workers = [worker for worker in worker_summaries if worker.get("status") == "offline"]
+    active_jobs = [enrich_job(job) for job in list_jobs() if job_is_active(job)]
+    canceling_jobs = [job for job in active_jobs if job.get("status") == "canceling"]
+    failed_jobs = recent_failed_jobs()
+    alerts: list[dict[str, Any]] = []
+
+    if not connected_workers:
+        alerts.append(
+            {
+                "id": "worker-offline",
+                "level": "error",
+                "title": "Mac Worker 离线",
+                "message": "云上可以继续查看数据，但 browser / hot_threads 任务当前无法执行。",
+                "action": "检查 Mac Worker LaunchAgent、登录状态和 Chrome 权限。",
+            }
+        )
+    elif stale_workers:
+        alerts.append(
+            {
+                "id": "worker-stale",
+                "level": "warn",
+                "title": f"{len(stale_workers)} 台 Worker 心跳陈旧",
+                "message": "Worker 没有在心跳窗口内继续上报，可能休眠、断网或被系统暂停。",
+                "action": "先看 Worker 状态卡和本机 LaunchAgent 状态脚本。",
+            }
+        )
+
+    if offline_workers and connected_workers:
+        alerts.append(
+            {
+                "id": "worker-partial-offline",
+                "level": "warn",
+                "title": f"{len(offline_workers)} 台 Worker 当前离线",
+                "message": "仍有在线 Worker，可以继续执行，但容量和稳定性会下降。",
+                "action": "必要时检查离线节点是否需要重启。",
+            }
+        )
+
+    if failed_jobs:
+        latest_failed = failed_jobs[0]
+        alerts.append(
+            {
+                "id": "recent-failures",
+                "level": "error",
+                "title": f"最近 {len(failed_jobs)} 条任务失败",
+                "message": f"最近失败任务：{latest_failed.get('study_title') or latest_failed.get('study_id')} · {latest_failed.get('stage_label') or latest_failed.get('stage_kind') or latest_failed.get('mode')}",
+                "action": "打开 Operations 查看详情，并优先重跑最近失败任务。",
+                "job_id": latest_failed.get("id"),
+                "retryable": True,
+            }
+        )
+
+    if canceling_jobs:
+        alerts.append(
+            {
+                "id": "jobs-canceling",
+                "level": "warn",
+                "title": f"{len(canceling_jobs)} 条任务正在停止中",
+                "message": "系统已经收到停止指令，正在等待 Worker 杀掉浏览器子进程并回写状态。",
+                "action": "几秒后刷新一次；如果长期停留在 canceling，再检查 Worker 日志。",
+            }
+        )
+
+    if not alerts:
+        alerts.append(
+            {
+                "id": "runtime-healthy",
+                "level": "success",
+                "title": "运行稳定",
+                "message": "Worker 在线，最近没有新的失败任务，当前可以继续发起研究和刷新。",
+                "action": "保持 adaptive 调度即可。",
+            }
+        )
+
+    return {
+        "alerts": alerts,
+        "recent_failed_jobs": failed_jobs,
+        "recent_failed_job_count": len(failed_jobs),
+        "active_job_count": len(active_jobs),
+        "canceling_job_count": len(canceling_jobs),
+        "worker_status_summary": {
+            "connected": len(connected_workers),
+            "stale": len(stale_workers),
+            "offline": len(offline_workers),
+        },
+    }
 
 
 def priority_label(priority_score: int) -> str:
@@ -2120,6 +2229,8 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 {
                     "ok": True,
                     "service": "demand-intelligence-api",
+                    "server_root": str(SERVER_ROOT),
+                    "runtime_mode": "hybrid_solution_a",
                     "time": now_iso(),
                 }
             )

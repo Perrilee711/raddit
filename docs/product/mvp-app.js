@@ -301,6 +301,12 @@ let runtimeStatus = {
   connected_worker_count: 0,
   worker_count: 0,
   workers: [],
+  alerts: [],
+  recent_failed_jobs: [],
+  recent_failed_job_count: 0,
+  active_job_count: 0,
+  canceling_job_count: 0,
+  worker_status_summary: { connected: 0, stale: 0, offline: 0 },
 };
 let refreshMode = "adaptive";
 let pollTimer = null;
@@ -403,6 +409,86 @@ function formatDateTime(value, empty = "未运行") {
   });
 }
 
+function formatRelativeSeconds(seconds, empty = "刚刚") {
+  if (seconds == null || Number.isNaN(Number(seconds))) return empty;
+  const total = Math.max(Number(seconds), 0);
+  if (total < 60) return `${total} 秒前`;
+  const minutes = Math.round(total / 60);
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.round(hours / 24);
+  return `${days} 天前`;
+}
+
+function workerStatusTone(status) {
+  if (status === "connected") return "up";
+  if (status === "stale") return "warn";
+  return "down";
+}
+
+function workerStatusLabel(status) {
+  const labels = {
+    connected: "在线",
+    stale: "心跳陈旧",
+    offline: "离线",
+  };
+  return labels[status] || "未知";
+}
+
+function runtimeAlertTone(level) {
+  if (level === "success") return "up";
+  if (level === "warn") return "warn";
+  return "down";
+}
+
+function recentJobWithin(job, hours = 12) {
+  if (!job) return false;
+  const timestamp = Date.parse(job.finished_at || job.updated_at || job.created_at || "");
+  if (Number.isNaN(timestamp)) return false;
+  return timestamp >= Date.now() - hours * 60 * 60 * 1000;
+}
+
+function buildRuntimeAlerts() {
+  const alerts = Array.isArray(runtimeStatus.alerts) ? runtimeStatus.alerts.slice() : [];
+  if (alerts.length) return alerts;
+
+  const fallback = [];
+  if (!runtimeStatus.hybrid_ready) {
+    fallback.push({
+      id: "worker-offline-fallback",
+      level: "error",
+      title: "Mac Worker 离线",
+      message: "当前没有可用的远程采集节点，browser / hot_threads 无法执行。",
+      action: "先恢复 Worker，再发起重抓。",
+    });
+  }
+
+  const recentFailures = (allJobs || []).filter((job) => job.status === "failed" && recentJobWithin(job)).slice(0, 3);
+  if (recentFailures.length) {
+    fallback.push({
+      id: "recent-failure-fallback",
+      level: "error",
+      title: `最近 ${recentFailures.length} 条任务失败`,
+      message: `${recentFailures[0].study_title || recentFailures[0].study_id} · ${recentFailures[0].stage_label || recentFailures[0].stage_kind || recentFailures[0].mode}`,
+      action: "打开 Operations 查看失败详情并重跑。",
+      job_id: recentFailures[0].id,
+      retryable: true,
+    });
+  }
+
+  if (!fallback.length) {
+    fallback.push({
+      id: "runtime-healthy-fallback",
+      level: "success",
+      title: "运行稳定",
+      message: "当前没有新的失败任务，Worker 与调度状态正常。",
+      action: "保持当前自适应调度即可。",
+    });
+  }
+  return fallback;
+}
+
 function modeLabel(value) {
   const labels = {
     adaptive: "adaptive",
@@ -420,6 +506,17 @@ function laneLabel(value) {
     maintenance: "维护队列",
   };
   return labels[value] || "未分配";
+}
+
+function stageLabel(value) {
+  const labels = {
+    discover: "discover",
+    harvest: "harvest",
+    refresh_hot: "refresh_hot",
+    rebuild_aggregates: "rebuild_aggregates",
+    publish_brief: "publish_brief",
+  };
+  return labels[value] || value || "unknown";
 }
 
 function activeJobCount() {
@@ -653,6 +750,10 @@ function renderMeta() {
 function renderAuthPanel() {
   const panel = document.getElementById("auth-panel");
   if (!panel) return;
+  const primaryWorker = (runtimeStatus.workers || [])[0];
+  const workerTone = workerStatusTone(primaryWorker?.status);
+  const workerLabel = primaryWorker ? workerStatusLabel(primaryWorker.status) : "未检测到";
+  const workerSeen = primaryWorker ? formatRelativeSeconds(primaryWorker.seconds_since_last_seen, "刚刚") : "尚未连接";
   if (!apiAvailable) {
     panel.innerHTML = `<div class="auth-card">Executive Demo · 静态快照版</div>`;
     return;
@@ -671,6 +772,11 @@ function renderAuthPanel() {
       <span>A3 工作流</span>
       <strong>${runtimeStatus.hybrid_ready ? "云上调度 · Mac 执行" : "等待 Worker"}</strong>
       <span>${runtimeStatus.hybrid_ready ? `${runtimeStatus.connected_worker_count} 台在线` : "采集链暂未就绪"}</span>
+    </div>
+    <div class="auth-card is-${workerTone}">
+      <span>Worker</span>
+      <strong>${workerLabel}</strong>
+      <span>${primaryWorker ? `${primaryWorker.name} · ${workerSeen}` : workerSeen}</span>
     </div>
   `;
 }
@@ -795,6 +901,50 @@ function itemMarkup(item) {
     <div class="item">
       <strong>${item.title}</strong>
       <div class="small">${item.body}</div>
+    </div>
+  `;
+}
+
+function workerCardMarkup(worker) {
+  const tone = workerStatusTone(worker.status);
+  const runningStage = worker.running_stage_kind ? stageLabel(worker.running_stage_kind) : "idle";
+  const runningJob = worker.running_job_id || "暂无";
+  return `
+    <div class="worker-card is-${tone}">
+      <div class="worker-card-head">
+        <div>
+          <strong>${worker.name}</strong>
+          <div class="small">${worker.id}</div>
+        </div>
+        <span class="mini-pill ${tone}">${workerStatusLabel(worker.status)}</span>
+      </div>
+      <div class="worker-meta">
+        <div class="small">最后心跳：${worker.last_seen_at ? `${formatDateTime(worker.last_seen_at, "未上报")} · ${formatRelativeSeconds(worker.seconds_since_last_seen, "刚刚")}` : "尚未连接"}</div>
+        <div class="small">最近事件：${worker.last_event || "暂无"} · 当前阶段：${runningStage}</div>
+        <div class="small">运行任务：${runningJob}</div>
+      </div>
+      <div class="kpi-line">
+        ${(worker.capabilities || []).map((capability) => `<span class="mini-pill">${stageLabel(capability)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function runtimeAlertMarkup(alert) {
+  const tone = runtimeAlertTone(alert.level);
+  return `
+    <div class="alert-item is-${tone}">
+      <div class="alert-head">
+        <strong>${alert.title}</strong>
+        <span class="mini-pill ${tone}">${alert.level === "success" ? "正常" : alert.level === "warn" ? "注意" : "异常"}</span>
+      </div>
+      <div class="small">${alert.message}</div>
+      ${alert.action ? `<div class="small">${alert.action}</div>` : ""}
+      <div class="cta">
+        ${alert.retryable && alert.job_id ? `<button type="button" class="button secondary small-button" data-retry-job-id="${alert.job_id}">重跑最近失败任务</button>` : ""}
+        <button type="button" class="button secondary small-button" data-open-view="operations">打开 Operations</button>
+        ${alert.job_id ? `<button type="button" class="button secondary small-button" data-focus-job-id="${alert.job_id}">查看对应任务</button>` : ""}
+      </div>
     </div>
   `;
 }
@@ -1082,6 +1232,13 @@ function trendSeriesMarkup() {
 
 function renderDashboard() {
   const activeStudySummary = studyList.find((study) => study.id === currentStudyId) || {};
+  const workerCardsMarkup = (runtimeStatus.workers || []).length
+    ? runtimeStatus.workers.map(workerCardMarkup).join("")
+    : `<div class="worker-card is-down"><strong>还没有 Worker</strong><div class="small">当前没有检测到可用的浏览器采集节点，browser / hot_threads 任务会被阻止。</div></div>`;
+  const runtimeAlertsMarkup = buildRuntimeAlerts()
+    .map(runtimeAlertMarkup)
+    .join("");
+  const latestRetryableFailure = (runtimeStatus.recent_failed_jobs || []).find((job) => job.id) || null;
   const queueLaneSummary = activeStudySummary.queue_lane_summary || {};
   const queueLaneMarkup = Object.entries(queueLaneSummary)
     .filter(([, count]) => Number(count || 0) > 0)
@@ -1188,6 +1345,37 @@ function renderDashboard() {
           <p>这里的热度不是帖子数，而是痛感强度、需求密度与趋势动量的综合结果。</p>
         </div>
         ${heatmapMarkup()}
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label">Worker 在线状态</div>
+            <h2>浏览器执行节点现在是否健康</h2>
+          </div>
+          <p>这块回答最关键的运维问题：Mac Worker 在线没有、最近有没有心跳、当前是不是正在执行真实采集。</p>
+        </div>
+        <div class="worker-grid">${workerCardsMarkup}</div>
+      </div>
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <div class="label orange">异常与重试</div>
+            <h2>系统当前最需要处理的运维信号</h2>
+          </div>
+          <p>把失败重试、Worker 离线、停止中任务这些需要介入的事项拉成显式告警，而不是让负责人自己翻日志。</p>
+        </div>
+        <div class="alert-list">${runtimeAlertsMarkup}</div>
+        <div class="cta" style="margin-top: 16px;">
+          <button type="button" class="button secondary" data-open-view="operations">查看全部任务</button>
+          ${
+            latestRetryableFailure
+              ? `<button type="button" class="button secondary" data-retry-job-id="${latestRetryableFailure.id}">重跑最近失败任务</button>`
+              : ""
+          }
+        </div>
       </div>
     </section>
 
@@ -2100,6 +2288,14 @@ function bindEvents() {
       return;
     }
 
+    const openViewButton = event.target.closest("[data-open-view]");
+    if (openViewButton) {
+      const nextView = openViewButton.dataset.openView;
+      if (!nextView) return;
+      setActiveView(nextView);
+      return;
+    }
+
     const operationsFilter = event.target.closest("[data-operations-study]");
     if (operationsFilter) {
       selectedOperationsStudyId = operationsFilter.dataset.operationsStudy;
@@ -2155,6 +2351,20 @@ function bindEvents() {
       await hydrateStudy(studyId);
       setActiveView("dashboard");
       selectedOperationsStudyId = studyId;
+      return;
+    }
+
+    const focusJobButton = event.target.closest("[data-focus-job-id]");
+    if (focusJobButton) {
+      const jobId = focusJobButton.dataset.focusJobId;
+      const targetJob = (allJobs || []).find((job) => job.id === jobId);
+      if (targetJob?.study_id && targetJob.study_id !== currentStudyId) {
+        await hydrateStudy(targetJob.study_id);
+      }
+      selectedOperationsStudyId = targetJob?.study_id || "all";
+      selectedJobId = jobId || null;
+      renderOperations();
+      setActiveView("operations");
       return;
     }
 
