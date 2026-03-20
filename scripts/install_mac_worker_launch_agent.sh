@@ -11,13 +11,13 @@ UID_VALUE="$(/usr/bin/id -u)"
 SERVICE_ROOT="$HOME/raddit-service"
 
 sync_runtime_root() {
+  /bin/rm -rf "$SERVICE_ROOT"
   /bin/mkdir -p "$SERVICE_ROOT"
-  /usr/bin/rsync -a --delete \
-    --exclude '.git' \
-    --exclude '.DS_Store' \
-    --exclude 'data/runtime/logs/' \
-    --exclude 'data/runtime/state/' \
-    "$SOURCE_ROOT/" "$SERVICE_ROOT/"
+  /usr/bin/ditto "$SOURCE_ROOT" "$SERVICE_ROOT"
+  /bin/rm -rf "$SERVICE_ROOT/.git" \
+    "$SERVICE_ROOT/.DS_Store" \
+    "$SERVICE_ROOT/data/runtime/logs" \
+    "$SERVICE_ROOT/data/runtime/state"
 }
 
 if [[ "$SOURCE_ROOT" == "$HOME/Desktop/"* || "$SOURCE_ROOT" == *"/Desktop/"* ]]; then
