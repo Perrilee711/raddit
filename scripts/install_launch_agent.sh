@@ -10,19 +10,45 @@ PLIST_PATH="$LAUNCH_AGENTS_DIR/$LABEL.plist"
 UID_VALUE="$(/usr/bin/id -u)"
 SERVICE_ROOT="$HOME/raddit-service"
 
+copy_tree() {
+  local relative_path="$1"
+  if [[ ! -e "$SOURCE_ROOT/$relative_path" ]]; then
+    return
+  fi
+  /bin/mkdir -p "$(/usr/bin/dirname "$SERVICE_ROOT/$relative_path")"
+  /bin/rm -rf "$SERVICE_ROOT/$relative_path"
+  /usr/bin/ditto "$SOURCE_ROOT/$relative_path" "$SERVICE_ROOT/$relative_path"
+}
+
+bootstrap_tree_if_missing() {
+  local relative_path="$1"
+  if [[ -e "$SERVICE_ROOT/$relative_path" || ! -e "$SOURCE_ROOT/$relative_path" ]]; then
+    return
+  fi
+  /bin/mkdir -p "$(/usr/bin/dirname "$SERVICE_ROOT/$relative_path")"
+  /usr/bin/ditto "$SOURCE_ROOT/$relative_path" "$SERVICE_ROOT/$relative_path"
+}
+
+copy_file() {
+  local relative_path="$1"
+  if [[ ! -f "$SOURCE_ROOT/$relative_path" ]]; then
+    return
+  fi
+  /bin/mkdir -p "$(/usr/bin/dirname "$SERVICE_ROOT/$relative_path")"
+  /bin/cp "$SOURCE_ROOT/$relative_path" "$SERVICE_ROOT/$relative_path"
+}
+
 sync_runtime_root() {
   /bin/mkdir -p "$SERVICE_ROOT"
-
-  /usr/bin/rsync -a --delete \
-    --exclude '.git' \
-    --exclude '.DS_Store' \
-    --exclude 'data/studies/' \
-    --exclude 'data/runtime/logs/' \
-    --exclude 'data/runtime/state/' \
-    --exclude 'data/jobs/' \
-    --exclude 'data/entities/studies/' \
-    --exclude 'docs/product/data/studies/' \
-    "$SOURCE_ROOT/" "$SERVICE_ROOT/"
+  copy_tree "scripts"
+  copy_tree "config"
+  copy_tree "docs/product"
+  copy_tree "deploy"
+  copy_file "README.md"
+  bootstrap_tree_if_missing "data/studies"
+  bootstrap_tree_if_missing "data/entities/studies"
+  bootstrap_tree_if_missing "data/raw/studies"
+  /bin/mkdir -p "$SERVICE_ROOT/data/runtime/logs" "$SERVICE_ROOT/data/runtime/state"
 }
 
 if [[ "$SOURCE_ROOT" == "$HOME/Desktop/"* || "$SOURCE_ROOT" == *"/Desktop/"* ]]; then
