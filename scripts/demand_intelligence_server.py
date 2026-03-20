@@ -92,6 +92,7 @@ STAGE_LABELS = {
     "publish_brief": "publish_brief",
 }
 JOB_DISPLAY_COMPLETED_WINDOW_HOURS = 24
+ACTIVE_JOB_STATUSES = {"queued", "running", "canceling"}
 WORKER_HEARTBEAT_STALE_SECONDS = 90
 LEGACY_SERVER_ROOTS = [
     Path("/Users/perrilee/Desktop/探索/raddit"),
@@ -421,9 +422,9 @@ def job_file(job_id: str) -> Path:
 def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
     payload = record["payload"]
     jobs = list_jobs_for_study(record["id"])
-    active_job_count = sum(1 for job in jobs if job.get("status") in {"queued", "running"})
+    active_job_count = sum(1 for job in jobs if job_is_active(job))
     active_jobs = sorted(
-        [job for job in jobs if job.get("status") in {"queued", "running"}],
+        [job for job in jobs if job_is_active(job)],
         key=queued_job_sort_key,
     )
     lead_job = active_jobs[0] if active_jobs else {}
@@ -1011,9 +1012,13 @@ def list_jobs() -> list[dict[str, Any]]:
     return jobs
 
 
+def job_is_active(job: dict[str, Any]) -> bool:
+    return job.get("status") in ACTIVE_JOB_STATUSES
+
+
 def job_visible_in_operations(job: dict[str, Any]) -> bool:
     status = job.get("status")
-    if status in {"queued", "running"}:
+    if status in ACTIVE_JOB_STATUSES:
         return True
     if status != "completed":
         return False
@@ -1144,7 +1149,7 @@ def active_jobs_for_study(study_id: str) -> list[dict[str, Any]]:
     return [
         job
         for job in list_jobs_for_study(study_id)
-        if job.get("status") in {"queued", "running"}
+        if job_is_active(job)
     ]
 
 
@@ -1224,7 +1229,38 @@ def enqueue_job(study_id: str, mode: str, actor: dict[str, Any] | None, trigger:
 
 
 def has_active_job(study_id: str) -> bool:
-    return any(job.get("status") in {"queued", "running"} and job.get("study_id") == study_id for job in list_jobs_for_study(study_id))
+    return any(job_is_active(job) and job.get("study_id") == study_id for job in list_jobs_for_study(study_id))
+
+
+def request_job_cancellation(job: dict[str, Any], actor: dict[str, Any] | None = None) -> dict[str, Any]:
+    status = job.get("status")
+    timestamp = now_iso()
+    actor = actor or {}
+    if status == "queued":
+        job["status"] = "canceled"
+        job["finished_at"] = timestamp
+        job["updated_at"] = timestamp
+        job["cancel_requested_at"] = timestamp
+    elif status in {"running", "canceling"}:
+        job["status"] = "canceling"
+        job["updated_at"] = timestamp
+        job["cancel_requested_at"] = timestamp
+    else:
+        raise ValueError(f"job_not_cancelable:{status}")
+    if actor:
+        job["cancel_requested_by"] = actor.get("id") or actor.get("email") or actor.get("name") or "unknown"
+        job["cancel_requested_role"] = actor.get("role") or "unknown"
+    save_job(job)
+    return job
+
+
+def cancel_active_jobs_for_study(study_id: str, actor: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    canceled_jobs = []
+    for job in list_jobs_for_study(study_id):
+        if not job_is_active(job):
+            continue
+        canceled_jobs.append(enrich_job(request_job_cancellation(job, actor=actor)))
+    return canceled_jobs
 
 
 def queued_job_sort_key(job: dict[str, Any]) -> tuple[int, int, str]:
@@ -2109,6 +2145,21 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path.startswith("/api/worker/jobs/"):
+            worker = self.require_worker()
+            if worker is None:
+                return
+            job_id = path.split("/")[4] if len(path.split("/")) > 4 else ""
+            job = load_job(job_id)
+            if not job:
+                self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
+                return
+            if job.get("claimed_by_worker_id") != worker.get("id"):
+                self.send_json({"error": "job_claim_mismatch", "worker_id": worker.get("id")}, status=409)
+                return
+            self.send_json({"job": enrich_job(job)})
+            return
+
         if path == "/api/auth/me":
             user = self.current_user()
             self.send_json({"user": sanitize_user(user)})
@@ -2345,11 +2396,20 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if not job:
                 self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
                 return
-            if job.get("status") != "running":
+            if job.get("status") not in {"running", "canceling"}:
                 self.send_json({"error": "job_not_running", "status": job.get("status")}, status=409)
                 return
             if job.get("claimed_by_worker_id") != worker.get("id"):
                 self.send_json({"error": "job_claim_mismatch", "worker_id": worker.get("id")}, status=409)
+                return
+            if job.get("status") == "canceling":
+                job["status"] = "canceled"
+                job["finished_at"] = now_iso()
+                job["updated_at"] = now_iso()
+                job["error"] = str(payload.get("error") or "canceled_by_user")
+                job["result_summary"] = payload.get("summary") or {}
+                save_job(job)
+                self.send_json({"canceled": True, "job": enrich_job(job)})
                 return
             try:
                 apply_worker_stage_result(job, payload)
@@ -2375,19 +2435,20 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if not job:
                 self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
                 return
-            if job.get("status") != "running":
+            if job.get("status") not in {"running", "canceling"}:
                 self.send_json({"error": "job_not_running", "status": job.get("status")}, status=409)
                 return
             if job.get("claimed_by_worker_id") != worker.get("id"):
                 self.send_json({"error": "job_claim_mismatch", "worker_id": worker.get("id")}, status=409)
                 return
-            job["status"] = "failed"
+            canceled = bool(payload.get("canceled")) or job.get("status") == "canceling"
+            job["status"] = "canceled" if canceled else "failed"
             job["finished_at"] = now_iso()
             job["updated_at"] = now_iso()
-            job["error"] = str(payload.get("error") or "remote_worker_failed")
+            job["error"] = str(payload.get("error") or ("canceled_by_user" if canceled else "remote_worker_failed"))
             job["failure_context"] = payload.get("context") or {}
             save_job(job)
-            self.send_json({"failed": True, "job": enrich_job(job)})
+            self.send_json({"canceled": canceled, "failed": not canceled, "job": enrich_job(job)})
             return
 
         if path.startswith("/api/jobs/") and path.endswith("/retry"):
@@ -2416,14 +2477,11 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if not job:
                 self.send_json({"error": "job_not_found", "job_id": job_id}, status=404)
                 return
-            if job.get("status") != "queued":
+            if job.get("status") not in ACTIVE_JOB_STATUSES:
                 self.send_json({"error": "job_not_cancelable", "status": job.get("status")}, status=409)
                 return
-            job["status"] = "canceled"
-            job["finished_at"] = now_iso()
-            job["updated_at"] = now_iso()
-            save_job(job)
-            self.send_json({"canceled": True, "job": enrich_job(job)})
+            updated = request_job_cancellation(job, actor=user)
+            self.send_json({"canceled": True, "job": enrich_job(updated)})
             return
 
         if path not in {"/api/studies/draft", "/api/studies"} and not path.startswith("/api/studies/"):
@@ -2467,6 +2525,26 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                     "job": job,
                 },
                 status=202,
+            )
+            return
+
+        if path.startswith("/api/studies/") and path.endswith("/stop"):
+            user = self.require_role("analyst")
+            if user is None:
+                return
+            study_id = path.split("/")[3]
+            record = load_study_record(study_id)
+            if not record:
+                self.send_json({"error": "study_not_found", "study_id": study_id}, status=404)
+                return
+            canceled_jobs = cancel_active_jobs_for_study(study_id, actor=user)
+            self.send_json(
+                {
+                    "stopped": True,
+                    "study": summarize_record(record),
+                    "canceled_jobs": canceled_jobs,
+                    "canceled_count": len(canceled_jobs),
+                }
             )
             return
 

@@ -423,7 +423,21 @@ function laneLabel(value) {
 }
 
 function activeJobCount() {
-  return (studyJobs || []).filter((job) => ["queued", "running"].includes(job.status)).length;
+  return (studyJobs || []).filter((job) => ["queued", "running", "canceling"].includes(job.status)).length;
+}
+
+function getInterruptibleStudyJobs() {
+  return (studyJobs || []).filter(
+    (job) =>
+      job.status === "queued" ||
+      (["running", "canceling"].includes(job.status) && job.execution_target === "mac_worker")
+  );
+}
+
+function getPrimaryInterruptibleJob() {
+  const jobs = getInterruptibleStudyJobs();
+  if (!jobs.length) return null;
+  return jobs.find((job) => job.status === "running" || job.status === "canceling") || jobs[0];
 }
 
 function showToast(title, body = "", tone = "") {
@@ -464,14 +478,24 @@ function syncJobNotifications() {
     }
   }
 
+  const canceled = (studyJobs || []).find((job) => job.status === "canceled");
+  if (canceled) {
+    const canceledKey = `${canceled.id}:${canceled.finished_at || ""}:canceled`;
+    if (canceledKey !== lastJobCompletionKey) {
+      lastJobCompletionKey = canceledKey;
+      showToast("爬取已停止", "当前抓取任务已被手动停止。", "warn");
+    }
+  }
+
   lastKnownActiveJobCount = activeCount;
 }
 
 function primeJobNotificationState() {
   lastKnownActiveJobCount = activeJobCount();
-  const latestFinished = (studyJobs || []).find((job) => job.status === "completed" || job.status === "failed");
+  const latestFinished = (studyJobs || []).find((job) => ["completed", "failed", "canceled"].includes(job.status));
   if (latestFinished) {
-    lastJobCompletionKey = `${latestFinished.id}:${latestFinished.finished_at || ""}${latestFinished.status === "failed" ? ":failed" : ""}`;
+    const suffix = latestFinished.status === "failed" ? ":failed" : latestFinished.status === "canceled" ? ":canceled" : "";
+    lastJobCompletionKey = `${latestFinished.id}:${latestFinished.finished_at || ""}${suffix}`;
   }
 }
 
@@ -704,8 +728,10 @@ function renderFilterChips() {
   const rangeChip = document.getElementById("range-chip");
   const confidenceChip = document.getElementById("confidence-chip");
   const refreshButton = document.getElementById("refresh-study-button");
+  const stopButton = document.getElementById("stop-study-button");
   const refreshModeSelect = document.getElementById("refresh-mode-select");
   const refreshModeWrapper = refreshModeSelect?.closest(".inline-select");
+  const interruptibleJob = getPrimaryInterruptibleJob();
 
   if (marketChip) marketChip.textContent = `市场：${appData.study.market}`;
   if (rangeChip) rangeChip.textContent = `周期：${appData.study.dateRange}`;
@@ -719,6 +745,20 @@ function renderFilterChips() {
   }
   if (refreshModeSelect) {
     refreshModeSelect.disabled = !apiAvailable;
+  }
+  if (stopButton) {
+    const visible = apiAvailable && Boolean(interruptibleJob);
+    stopButton.classList.toggle("hidden", !visible);
+    stopButton.disabled = !visible || interruptibleJob?.status === "canceling";
+    if (interruptibleJob?.status === "running") {
+      stopButton.textContent = "停止当前爬取";
+    } else if (interruptibleJob?.status === "canceling") {
+      stopButton.textContent = "停止中...";
+    } else if (interruptibleJob?.status === "queued") {
+      stopButton.textContent = "停止待运行任务";
+    } else {
+      stopButton.textContent = "停止当前爬取";
+    }
   }
 }
 
@@ -1522,7 +1562,7 @@ function renderSegments() {
 function renderOperations() {
   const effectiveJobs = (allJobs || []).filter(isEffectiveOperationsJob);
   const visibleJobs = getVisibleOperationsJobs().filter(isEffectiveOperationsJob).slice().sort((left, right) => {
-    const statusRank = { running: 0, queued: 1, failed: 2, completed: 3, canceled: 4 };
+    const statusRank = { running: 0, canceling: 1, queued: 2, failed: 3, completed: 4, canceled: 5 };
     const laneRank = { realtime: 0, discovery: 1, maintenance: 2 };
     const statusDiff = (statusRank[left.status] ?? 99) - (statusRank[right.status] ?? 99);
     if (statusDiff !== 0) return statusDiff;
@@ -1541,6 +1581,7 @@ function renderOperations() {
   const statusSummary = {
     queued: effectiveJobs.filter((job) => job.status === "queued").length,
     running: effectiveJobs.filter((job) => job.status === "running").length,
+    canceling: effectiveJobs.filter((job) => job.status === "canceling").length,
     completed: effectiveJobs.filter((job) => job.status === "completed").length,
   };
   const laneSummary = effectiveJobs.reduce(
@@ -1623,6 +1664,7 @@ function renderOperations() {
         <div class="stack">
           <div class="item"><strong>Queued</strong><div class="small">${statusSummary.queued}</div></div>
           <div class="item"><strong>Running</strong><div class="small">${statusSummary.running}</div></div>
+          <div class="item"><strong>Stopping</strong><div class="small">${statusSummary.canceling}</div></div>
           <div class="item"><strong>Completed</strong><div class="small">${statusSummary.completed}</div></div>
           <div class="item"><strong>${laneLabel("realtime")}</strong><div class="small">${laneSummary.realtime}</div></div>
           <div class="item"><strong>${laneLabel("discovery")}</strong><div class="small">${laneSummary.discovery}</div></div>
@@ -1671,8 +1713,8 @@ function renderOperations() {
                     <div class="cta">
                       <button type="button" class="button secondary" data-retry-job-id="${selectedJob.id}">重跑这条任务</button>
                       ${
-                        selectedJob.status === "queued"
-                          ? `<button type="button" class="button secondary" data-cancel-job-id="${selectedJob.id}">取消排队</button>`
+                        (selectedJob.status === "queued" || (["running", "canceling"].includes(selectedJob.status) && selectedJob.execution_target === "mac_worker"))
+                          ? `<button type="button" class="button danger" data-cancel-job-id="${selectedJob.id}">${selectedJob.status === "queued" ? "取消排队" : selectedJob.status === "canceling" ? "停止中..." : "停止这条任务"}</button>`
                           : ""
                       }
                       <button type="button" class="button secondary" data-open-study-id="${selectedJob.study_id}">打开对应 Study</button>
@@ -2089,13 +2131,18 @@ function bindEvents() {
       const jobId = cancelButton.dataset.cancelJobId;
       cancelButton.disabled = true;
       try {
-        await cancelJob(jobId);
-        showToast("任务已取消", "该任务已从队列中移除。", "warn");
+        const response = await cancelJob(jobId);
+        const stoppedStatus = response?.job?.status;
+        showToast(
+          stoppedStatus === "canceling" ? "已请求停止" : "任务已取消",
+          stoppedStatus === "canceling" ? "系统正在终止当前抓取子进程，请稍等状态回写。" : "该任务已从队列中移除。",
+          "warn"
+        );
         await new Promise((resolve) => setTimeout(resolve, 600));
         await pollCurrentStudy();
       } catch (error) {
         console.warn("Cancel job failed:", error);
-        showToast("取消失败", "当前任务可能已经开始运行。", "error");
+        showToast("停止失败", "当前任务状态可能已变化，请稍后刷新重试。", "error");
       } finally {
         cancelButton.disabled = false;
       }
@@ -2189,6 +2236,28 @@ function bindEvents() {
       } finally {
         refreshButton.disabled = false;
         refreshButton.textContent = "刷新当前 Study";
+      }
+    });
+  }
+  const stopButton = document.getElementById("stop-study-button");
+  if (stopButton) {
+    stopButton.addEventListener("click", async () => {
+      stopButton.disabled = true;
+      try {
+        const response = await stopStudy(currentStudyId);
+        const count = Number(response?.canceled_count || 0);
+        showToast(
+          "已发送停止指令",
+          count > 0 ? `当前 Study 已停止 ${count} 条活动任务。` : "当前没有可停止的活动任务。",
+          "warn"
+        );
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await pollCurrentStudy();
+      } catch (error) {
+        console.warn("Stop study failed:", error);
+        showToast("停止失败", "当前爬取任务没有成功停止，请稍后重试。", "error");
+      } finally {
+        renderFilterChips();
       }
     });
   }
@@ -2387,13 +2456,21 @@ async function cancelJob(jobId) {
   });
 }
 
+async function stopStudy(studyId) {
+  if (!isHttpMode()) return { stopped: true, canceled_count: 0 };
+  return apiFetchJson(`/api/studies/${studyId}/stop`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 function getStudyById(studyId) {
   return (studyList || []).find((study) => study.id === studyId) || null;
 }
 
 function isEffectiveOperationsJob(job) {
   if (!job) return false;
-  if (job.status === "queued" || job.status === "running") return true;
+  if (["queued", "running", "canceling"].includes(job.status)) return true;
   if (job.status !== "completed") return false;
   const finishedAt = job.finished_at || job.updated_at || job.created_at;
   if (!finishedAt) return true;

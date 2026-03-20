@@ -849,6 +849,12 @@ h1, h2, h3, h4, p {
   color: var(--gray-700);
 }
 
+.button.danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 16px 32px rgba(239, 68, 68, 0.22);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -1681,6 +1687,11 @@ h1, h2, h3, h4, p {
 .button.secondary:hover {
   border-color: #9db8e4;
   background: #ffffff;
+}
+
+.button.danger:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 20px 38px rgba(220, 38, 38, 0.26);
 }
 
 .button:active {

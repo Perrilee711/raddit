@@ -25,6 +25,10 @@ DEFAULT_CHROME_APP = os.environ.get("DEMAND_INTEL_CHROME_APP", "Google Chrome")
 REMOTE_STAGE_KINDS = ("discover", "harvest", "refresh_hot")
 
 
+class JobCanceledError(RuntimeError):
+    pass
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Poll the public Demand Intelligence API and execute browser stages on a Mac worker."
@@ -69,6 +73,11 @@ def request_json(
     except urllib.error.HTTPError as error:
         raw = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"HTTP {error.code} {path}: {raw}") from error
+
+
+def fetch_worker_job(api_base_url: str, worker_token: str, job_id: str) -> dict[str, Any]:
+    response = request_json(api_base_url, "GET", f"/api/worker/jobs/{job_id}", worker_token, payload=None, timeout=30)
+    return response.get("job") or {}
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -117,11 +126,46 @@ def build_harvest_command(
     return command
 
 
+def run_command_with_cancellation(
+    command: list[str],
+    *,
+    job_id: str,
+    api_base_url: str,
+    worker_token: str,
+    cwd: Path,
+    cancel_poll_seconds: float = 2.0,
+) -> None:
+    process = subprocess.Popen(command, cwd=str(cwd))
+    try:
+        while True:
+            return_code = process.poll()
+            if return_code is not None:
+                if return_code != 0:
+                    raise subprocess.CalledProcessError(return_code, command)
+                return
+            job = fetch_worker_job(api_base_url, worker_token, job_id)
+            if job.get("status") in {"canceling", "canceled"}:
+                process.terminate()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+                raise JobCanceledError("canceled_by_user")
+            time.sleep(cancel_poll_seconds)
+    finally:
+        if process.poll() is None:
+            process.kill()
+
+
 def run_stage(
     stage_kind: str,
     task: dict[str, Any],
     chrome_app: str,
     continue_on_error: bool,
+    api_base_url: str,
+    worker_token: str,
+    job_id: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     config = task.get("config") or {}
     with tempfile.TemporaryDirectory(prefix=f"demand-worker-{stage_kind}-") as temp_dir:
@@ -142,7 +186,13 @@ def run_stage(
             ]
             if continue_on_error:
                 command.append("--continue-on-error")
-            subprocess.run(command, check=True, cwd=str(ROOT_DIR))
+            run_command_with_cancellation(
+                command,
+                job_id=job_id,
+                api_base_url=api_base_url,
+                worker_token=worker_token,
+                cwd=ROOT_DIR,
+            )
             rows = read_jsonl(output_path)
             summary = {
                 "discovered_count": len(rows),
@@ -156,7 +206,13 @@ def run_stage(
         output_path = temp_root / "output.jsonl"
         write_jsonl(input_path, input_rows)
         command = build_harvest_command(input_path, output_path, config, chrome_app, continue_on_error)
-        subprocess.run(command, check=True, cwd=str(ROOT_DIR))
+        run_command_with_cancellation(
+            command,
+            job_id=job_id,
+            api_base_url=api_base_url,
+            worker_token=worker_token,
+            cwd=ROOT_DIR,
+        )
         rows = read_jsonl(output_path)
         comment_count = sum(len((row.get("comments") or [])) for row in rows)
         summary = {
@@ -220,7 +276,15 @@ def main() -> None:
             flush=True,
         )
         try:
-            rows, summary = run_stage(stage_kind, task, args.chrome_app, args.continue_on_error)
+            rows, summary = run_stage(
+                stage_kind,
+                task,
+                args.chrome_app,
+                args.continue_on_error,
+                args.api_base_url,
+                args.worker_token,
+                job_id,
+            )
             request_json(
                 args.api_base_url,
                 "POST",
@@ -236,6 +300,32 @@ def main() -> None:
                         "stage_kind": stage_kind,
                         "row_count": len(rows),
                         "summary": summary,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+        except JobCanceledError as error:
+            request_json(
+                args.api_base_url,
+                "POST",
+                f"/api/worker/jobs/{job_id}/fail",
+                args.worker_token,
+                payload={
+                    "error": str(error),
+                    "canceled": True,
+                    "context": {
+                        "stage_kind": stage_kind,
+                        "worker_id": args.worker_id,
+                    },
+                },
+            )
+            print(
+                json.dumps(
+                    {
+                        "event": "job_canceled",
+                        "job_id": job_id,
+                        "stage_kind": stage_kind,
                     },
                     ensure_ascii=False,
                 ),
