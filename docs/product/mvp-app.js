@@ -298,6 +298,9 @@ let selectedJobId = null;
 let selectedTrendViewKey = null;
 let selectedTrendSeriesId = "all";
 let apiAvailable = false;
+const runtimeConfig = window.__DEMAND_INTEL_CONFIG__ || {};
+const configuredApiBaseUrl = `${runtimeConfig.API_BASE_URL || runtimeConfig.apiBaseUrl || ""}`.trim().replace(/\/$/, "");
+const AUTH_TOKEN_KEY = "demand_intel_auth_token";
 
 const DEFAULT_STUDY_KEYWORD_GROUPS = [
   {
@@ -332,7 +335,42 @@ const views = [
 ];
 
 function isHttpMode() {
-  return window.location.protocol.startsWith("http");
+  return window.location.protocol.startsWith("http") || Boolean(configuredApiBaseUrl);
+}
+
+function resolveApiUrl(path) {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return configuredApiBaseUrl ? `${configuredApiBaseUrl}${path}` : path;
+}
+
+function shouldUseCookieAuth() {
+  if (!configuredApiBaseUrl) return true;
+  try {
+    return new URL(configuredApiBaseUrl).origin === window.location.origin;
+  } catch (error) {
+    return false;
+  }
+}
+
+function readAuthToken() {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function writeAuthToken(token) {
+  try {
+    if (!token) {
+      window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      return;
+    }
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch (error) {
+    // ignore storage failures
+  }
 }
 
 function getVisibleViews() {
@@ -529,16 +567,22 @@ function currentStudySetupPayload() {
 }
 
 async function apiFetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    credentials: "include",
+  const authToken = readAuthToken();
+  const response = await fetch(resolveApiUrl(url), {
+    credentials: shouldUseCookieAuth() ? "include" : "omit",
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(authToken ? { "X-User-Token": authToken } : {}),
       ...(options.headers || {}),
     },
     ...options,
   });
 
+  if (response.status === 401) {
+    writeAuthToken("");
+    throw new Error("unauthorized");
+  }
   if (response.status === 403) {
     throw new Error("forbidden");
   }
@@ -2260,6 +2304,9 @@ async function loginDemoAdmin() {
     method: "POST",
     body: JSON.stringify({ email: "admin@local", password: "admin123" }),
   });
+  if (response?.token) {
+    writeAuthToken(response.token);
+  }
   return response.user || null;
 }
 

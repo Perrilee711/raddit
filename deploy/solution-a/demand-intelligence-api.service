@@ -1,0 +1,18 @@
+[Unit]
+Description=Demand Intelligence Public API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/demand-intelligence
+Environment=DEMAND_INTEL_HOST=0.0.0.0
+Environment=DEMAND_INTEL_PORT=8765
+Environment=DEMAND_INTEL_INPUT=/opt/demand-intelligence/data/raw/studies/fishgoo-us-dropshipping.jsonl
+Environment=DEMAND_INTEL_CORS_ORIGINS=https://app.fishgoo.com,https://skill-deploy-jr9bh4v87v.vercel.app
+ExecStart=/bin/bash /opt/demand-intelligence/scripts/start_public_api.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

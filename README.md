@@ -161,6 +161,7 @@ API 版本命令：
 
 当前已提供的接口：
 
+- `/api/health`
 - `/api/studies/fishgoo-us-dropshipping/dashboard`
 - `/api/studies/fishgoo-us-dropshipping/data-foundation`
 - `/api/studies/fishgoo-us-dropshipping/threads`
@@ -258,6 +259,41 @@ study 会写到：
 
 - Opportunity Score
 - Packaging Readiness
+
+## 方案 A：前端接公网 API
+
+如果你要让同事通过 Vercel 前端访问完整系统，而不是依赖本机 `127.0.0.1`，当前仓库已经补了 A1 所需的最小能力：
+
+- 前端运行时配置：
+  - `docs/product/runtime-config.js`
+  - `docs/product/runtime-config.example.js`
+- 公网 API 启动脚本：
+  - `scripts/start_public_api.sh`
+- 云服务器部署模板：
+  - `deploy/solution-a/demand-intelligence-api.service`
+  - `deploy/solution-a/nginx-api.conf`
+- 上线手册：
+  - `docs/product/2026-03-20-solution-a-a1-public-api-runbook.md`
+
+前端跨域访问时，当前服务支持：
+
+- `X-User-Token`
+- `Authorization: Bearer`
+- CORS preflight
+
+最简单的使用方式是把 `docs/product/runtime-config.js` 改成：
+
+```js
+window.__DEMAND_INTEL_CONFIG__ = {
+  API_BASE_URL: "https://api.fishgoo.com",
+};
+```
+
+然后把后端服务部署到 Ubuntu 服务器并开启：
+
+```bash
+./scripts/start_public_api.sh
+```
 - Weekly Brief 的结论文案
 - Dashboard 的数据映射与评论驱动信号模块
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import re
 import subprocess
 import sys
@@ -143,6 +144,17 @@ def parse_args() -> argparse.Namespace:
         default="最新 564 条定向采样",
         help="Study date range label.",
     )
+    parser.add_argument(
+        "--cors-origins",
+        default=os.environ.get("DEMAND_INTEL_CORS_ORIGINS", ""),
+        help="Comma-separated allowed CORS origins for the public API.",
+    )
+    parser.add_argument(
+        "--cookie-secure",
+        action="store_true",
+        default=os.environ.get("DEMAND_INTEL_COOKIE_SECURE", "").lower() in {"1", "true", "yes"},
+        help="Mark auth cookies as Secure; recommended when serving behind HTTPS.",
+    )
     return parser.parse_args()
 
 
@@ -212,6 +224,20 @@ def parse_cookie_header(raw_cookie: str | None) -> dict[str, str]:
         key, value = chunk.split("=", 1)
         result[key.strip()] = value.strip()
     return result
+
+
+def parse_bearer_token(value: str | None) -> str | None:
+    if not value:
+        return None
+    if not value.lower().startswith("bearer "):
+        return None
+    token = value[7:].strip()
+    return token or None
+
+
+def parse_allowed_origins(raw: str) -> set[str]:
+    values = {item.strip() for item in (raw or "").split(",") if item.strip()}
+    return values
 
 
 def ensure_role(user: dict[str, Any] | None, minimum_role: str) -> bool:
@@ -1524,6 +1550,8 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
     study_title: str
     market: str
     date_range: str
+    allowed_origins: set[str] = set()
+    cookie_secure: bool = False
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -1543,9 +1571,24 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             return
         self.send_text("Not Found", HTTPStatus.NOT_FOUND)
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if not path.startswith("/api/"):
+            self.send_text("Not Found", HTTPStatus.NOT_FOUND)
+            return
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.add_cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def current_user(self) -> dict[str, Any] | None:
         cookies = parse_cookie_header(self.headers.get("Cookie"))
-        token = self.headers.get("X-User-Token") or cookies.get("demand_intel_token")
+        token = (
+            self.headers.get("X-User-Token")
+            or parse_bearer_token(self.headers.get("Authorization"))
+            or cookies.get("demand_intel_token")
+        )
         return find_user_by_token(token)
 
     def require_role(self, minimum_role: str) -> dict[str, Any] | None:
@@ -1565,33 +1608,80 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:  # noqa: A003
         return
 
+    def cors_origin(self) -> str | None:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return None
+        if "*" in self.allowed_origins:
+            return origin
+        if origin in self.allowed_origins:
+            return origin
+        return None
+
+    def add_cors_headers(self) -> None:
+        origin = self.cors_origin()
+        if not origin:
+            return
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-User-Token, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Vary", "Origin")
+
     def send_json(self, payload: dict, status: int = 200) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status)
+        self.add_cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def send_json_with_cookie(self, payload: dict, cookie_value: str | None = None, status: int = 200) -> None:
+    def send_json_with_cookie(
+        self,
+        payload: dict,
+        cookie_value: str | None = None,
+        status: int = 200,
+        expire_cookie: bool = False,
+    ) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status)
+        self.add_cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         if cookie_value is not None:
-            self.send_header("Set-Cookie", f"demand_intel_token={cookie_value}; Path=/; SameSite=Lax")
+            cookie_parts = [f"demand_intel_token={cookie_value}", "Path=/"]
+            if expire_cookie:
+                cookie_parts.append("Max-Age=0")
+            if self.cookie_secure:
+                cookie_parts.extend(["SameSite=None", "Secure"])
+            else:
+                cookie_parts.append("SameSite=Lax")
+            self.send_header("Set-Cookie", "; ".join(cookie_parts))
         self.end_headers()
         self.wfile.write(body)
 
     def send_text(self, message: str, status: int) -> None:
         body = message.encode("utf-8")
         self.send_response(status)
+        if self.path.startswith("/api/"):
+            self.add_cors_headers()
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def handle_api(self, path: str) -> None:
+        if path == "/api/health":
+            self.send_json(
+                {
+                    "ok": True,
+                    "service": "demand-intelligence-api",
+                    "time": now_iso(),
+                }
+            )
+            return
+
         if path == "/api/auth/me":
             user = self.current_user()
             self.send_json({"user": sanitize_user(user)})
@@ -1773,11 +1863,11 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             if not user:
                 self.send_json({"error": "invalid_credentials"}, status=401)
                 return
-            self.send_json_with_cookie({"user": sanitize_user(user)}, user.get("token"), status=200)
+            self.send_json_with_cookie({"user": sanitize_user(user), "token": user.get("token")}, user.get("token"), status=200)
             return
 
         if path == "/api/auth/logout":
-            self.send_json_with_cookie({"ok": True}, "", status=200)
+            self.send_json_with_cookie({"ok": True}, "", status=200, expire_cookie=True)
             return
 
         if path.startswith("/api/jobs/") and path.endswith("/retry"):
@@ -2009,6 +2099,8 @@ def main() -> None:
     DemandIntelligenceHandler.study_title = args.study_title
     DemandIntelligenceHandler.market = args.market
     DemandIntelligenceHandler.date_range = args.date_range
+    DemandIntelligenceHandler.allowed_origins = parse_allowed_origins(args.cors_origins)
+    DemandIntelligenceHandler.cookie_secure = args.cookie_secure
 
     stop_event = threading.Event()
     worker = threading.Thread(target=worker_loop, args=(stop_event,), daemon=True)
@@ -2020,6 +2112,8 @@ def main() -> None:
     print(f"Demand Intelligence MVP running at http://{args.host}:{args.port}")
     print(f"Study ID: {STUDY_ID}")
     print(f"Serving static files from: {root}")
+    if DemandIntelligenceHandler.allowed_origins:
+        print(f"CORS enabled for: {', '.join(sorted(DemandIntelligenceHandler.allowed_origins))}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
