@@ -23,7 +23,7 @@
 
 ## 2. 交付范围
 
-本次交付包含 8 类核心资产：
+本次交付包含 11 类核心资产：
 
 1. `BRD`：业务需求文档
 2. `PRD`：产品需求文档
@@ -33,6 +33,9 @@
 6. `Release & Handoff`：上线、部署、交接手册
 7. `Project Workflow`：可复用项目交付工作流
 8. `Live System`：代码仓库、在线地址、运行环境
+9. `Executive PPT`：适合老板汇报的交付摘要
+10. `Acceptance Spreadsheet`：表格版项目验收清单
+11. `Blank Template Directory`：可复制到下个项目的空白模板目录
 
 ---
 
@@ -47,6 +50,10 @@
 - [05-test-plan-and-acceptance.md](/Users/perrilee/Desktop/探索/raddit/docs/delivery/05-test-plan-and-acceptance.md)
 - [06-release-and-handoff.md](/Users/perrilee/Desktop/探索/raddit/docs/delivery/06-release-and-handoff.md)
 - [07-reusable-project-delivery-workflow.md](/Users/perrilee/Desktop/探索/raddit/docs/delivery/07-reusable-project-delivery-workflow.md)
+- [08-executive-delivery-summary.md](/Users/perrilee/Desktop/探索/raddit/docs/delivery/08-executive-delivery-summary.md)
+- [08-executive-delivery-summary.pptx](/Users/perrilee/Desktop/探索/raddit/docs/delivery/08-executive-delivery-summary.pptx)
+- [09-project-acceptance-checklist.xlsx](/Users/perrilee/Desktop/探索/raddit/docs/delivery/09-project-acceptance-checklist.xlsx)
+- [项目交付模板目录](/Users/perrilee/Desktop/探索/raddit/templates/project-delivery-template/README.md)
 
 ### 3.2 已有补充文档
 

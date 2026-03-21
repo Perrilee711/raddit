@@ -35,6 +35,10 @@
 - `docs/delivery/05-test-plan-and-acceptance.md`：测试与验收文档
 - `docs/delivery/06-release-and-handoff.md`：发布与交接文档
 - `docs/delivery/07-reusable-project-delivery-workflow.md`：下一次项目可复用的标准工作流
+- `docs/delivery/08-executive-delivery-summary.md`：老板汇报版交付摘要源文档
+- `docs/delivery/08-executive-delivery-summary.pptx`：老板汇报版 PPT 成品
+- `docs/delivery/09-project-acceptance-checklist.xlsx`：表格版项目验收清单
+- `templates/project-delivery-template/`：下个项目可直接复制的空白模板目录
 
 ## 适用版块
 
