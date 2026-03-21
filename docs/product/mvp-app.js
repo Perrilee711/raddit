@@ -537,6 +537,69 @@ function getPrimaryInterruptibleJob() {
   return jobs.find((job) => job.status === "running" || job.status === "canceling") || jobs[0];
 }
 
+function replaceJobInCollection(collection, updatedJob) {
+  if (!Array.isArray(collection) || !updatedJob?.id) return collection || [];
+  let found = false;
+  const next = collection.map((job) => {
+    if (job.id !== updatedJob.id) return job;
+    found = true;
+    return { ...job, ...updatedJob };
+  });
+  if (!found) next.unshift(updatedJob);
+  return next;
+}
+
+function syncStudySummaryFromStop(response) {
+  const stoppedStudy = response?.study;
+  if (!stoppedStudy?.id) return;
+  if (stoppedStudy.id === currentStudyId) {
+    appData = {
+      ...appData,
+      study: {
+        ...appData.study,
+        updatedAt: formatDateTime(new Date().toISOString(), appData.study.updatedAt),
+      },
+    };
+  }
+  studyList = (studyList || []).map((study) => {
+    if (study.id !== stoppedStudy.id) return study;
+    return {
+      ...study,
+      active_job_count: stoppedStudy.active_job_count ?? 0,
+      active_queue_lane: stoppedStudy.active_queue_lane ?? null,
+      active_priority_label: stoppedStudy.active_priority_label ?? null,
+      active_priority_score: stoppedStudy.active_priority_score ?? null,
+      active_requested_mode: stoppedStudy.active_requested_mode ?? null,
+      active_resolved_mode: stoppedStudy.active_resolved_mode ?? null,
+      active_strategy_reason: stoppedStudy.active_strategy_reason ?? null,
+      active_stage_kind: stoppedStudy.active_stage_kind ?? null,
+      active_stage_label: stoppedStudy.active_stage_label ?? null,
+      active_pipeline_progress: stoppedStudy.active_pipeline_progress ?? null,
+      queue_lane_summary: stoppedStudy.queue_lane_summary || study.queue_lane_summary || {},
+    };
+  });
+}
+
+function applyStopResponse(response) {
+  const canceledJobs = Array.isArray(response?.canceled_jobs) ? response.canceled_jobs : [];
+  canceledJobs.forEach((job) => {
+    studyJobs = replaceJobInCollection(studyJobs, job);
+    allJobs = replaceJobInCollection(allJobs, job);
+  });
+  syncStudySummaryFromStop(response);
+  renderMeta();
+  renderAuthPanel();
+  renderFilterChips();
+  renderStudyRail();
+  renderDashboard();
+  renderStudySetup();
+  renderSegments();
+  renderPackaging();
+  renderWeekly();
+  renderOperations();
+  setActiveView(currentViewId);
+}
+
 function showToast(title, body = "", tone = "") {
   const stack = document.getElementById("toast-stack");
   if (!stack) return;
@@ -2452,13 +2515,21 @@ function bindEvents() {
   const stopButton = document.getElementById("stop-study-button");
   if (stopButton) {
     stopButton.addEventListener("click", async () => {
+      const interruptibleJob = getPrimaryInterruptibleJob();
+      const previousLabel = stopButton.textContent;
       stopButton.disabled = true;
+      stopButton.textContent = interruptibleJob?.status === "queued" ? "取消中..." : "停止中...";
       try {
         const response = await stopStudy(currentStudyId);
         const count = Number(response?.canceled_count || 0);
+        applyStopResponse(response);
         showToast(
           "已发送停止指令",
-          count > 0 ? `当前 Study 已停止 ${count} 条活动任务。` : "当前没有可停止的活动任务。",
+          count > 0
+            ? `当前 Study 已停止 ${count} 条活动任务。`
+            : interruptibleJob
+              ? "任务可能刚好已经完成，系统没有找到还可停止的活动任务。"
+              : "当前没有可停止的活动任务。",
           "warn"
         );
         await new Promise((resolve) => setTimeout(resolve, 800));
@@ -2467,6 +2538,7 @@ function bindEvents() {
         console.warn("Stop study failed:", error);
         showToast("停止失败", "当前爬取任务没有成功停止，请稍后重试。", "error");
       } finally {
+        stopButton.textContent = previousLabel;
         renderFilterChips();
       }
     });
