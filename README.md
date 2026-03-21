@@ -23,6 +23,19 @@
 - `scripts/demand_intelligence_server.py`：最小后端服务，提供 API + 托管 MVP 页面
 - `scripts/run_study_pipeline.py`：按 study id 重建某个研究任务的 payload / pipeline，支持 `seeded / browser / hot_threads / adaptive`
 
+## 完整交付文档
+
+如果你要把这个项目作为一个完整系统交付、归档或对外转交，优先阅读：
+
+- `docs/delivery/00-project-delivery-index.md`：完整交付总索引
+- `docs/delivery/01-business-requirements-brd.md`：业务需求文档
+- `docs/delivery/02-product-requirements-prd.md`：产品需求文档
+- `docs/delivery/03-ui-design-spec.md`：UI 设计与交互规范
+- `docs/delivery/04-technical-system-design.md`：技术系统设计
+- `docs/delivery/05-test-plan-and-acceptance.md`：测试与验收文档
+- `docs/delivery/06-release-and-handoff.md`：发布与交接文档
+- `docs/delivery/07-reusable-project-delivery-workflow.md`：下一次项目可复用的标准工作流
+
 ## 适用版块
 
 - `r/dropship`
