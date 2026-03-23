@@ -297,7 +297,7 @@ let runtimeStatus = {
   aggregation_execution: "api_local_worker",
   recommended_first_run_mode: "browser",
   recommended_schedule_mode: "adaptive",
-  workflow_summary: "云上发任务，Mac 自动执行浏览器采集，结果聚合后自动回写前端。",
+  workflow_summary: "云上发任务，Mac 自动执行浏览器采集；默认仅在你手动触发时运行，除非你明确开启自动调度。",
   connected_worker_count: 0,
   worker_count: 0,
   workers: [],
@@ -723,6 +723,7 @@ function buildStudySetupState(fields, draft) {
       draft?.recommended_keyword_groups || draft?.recommendedKeywordGroups || DEFAULT_STUDY_KEYWORD_GROUPS,
     suggested_first_run_mode: draft?.suggested_first_run_mode || "browser",
     suggested_schedule_mode: draft?.suggested_schedule_mode || "adaptive",
+    suggested_schedule_enabled: Boolean(draft?.suggested_schedule_enabled),
     suggested_interval_hours: draft?.suggested_interval_hours || 24,
     crawl_cost_estimate:
       draft?.crawl_cost_estimate || estimateStudySetupCost(recommendedSubreddits, recommendedKeywords),
@@ -1454,7 +1455,7 @@ function renderDashboard() {
         <div class="ops-list">
           <div class="ops-stat">
             <div>
-              <strong>${currentSchedule.enabled ? "已开启自动调度" : "尚未开启自动调度"}</strong>
+              <strong>${currentSchedule.enabled ? "已开启自动调度" : "当前为手动运行模式"}</strong>
               <div class="small">模式：${modeLabel(currentSchedule.mode || "adaptive")}</div>
             </div>
             <div class="small">
@@ -1588,13 +1589,13 @@ function renderStudySetup() {
   const crawlCost = state.crawl_cost_estimate || estimateStudySetupCost(state.recommended_subreddits, state.recommended_keywords);
   const workflowStatusMarkup = `
     <div class="workflow-banner ${runtimeStatus.hybrid_ready ? "is-ready" : "is-pending"}">
-      <strong>${runtimeStatus.hybrid_ready ? "正式团队工作流已就绪" : "正式团队工作流待就绪"}</strong>
-      <div class="small">${runtimeStatus.workflow_summary || "云上发任务，Mac Worker 执行浏览器采集，结果自动回写前端。"}${
-        runtimeStatus.hybrid_ready
-          ? ` 当前在线 ${runtimeStatus.connected_worker_count} 台 Worker。`
-          : " 连接 Worker 后，schedule 会默认进入 adaptive 正式工作流。"
-      }</div>
-    </div>
+        <strong>${runtimeStatus.hybrid_ready ? "正式团队工作流已就绪" : "正式团队工作流待就绪"}</strong>
+        <div class="small">${runtimeStatus.workflow_summary || "云上发任务，Mac Worker 执行浏览器采集，结果自动回写前端。"}${
+          runtimeStatus.hybrid_ready
+            ? ` 当前在线 ${runtimeStatus.connected_worker_count} 台 Worker。`
+          : " Worker 在线后，你仍需手动启动首跑；只有明确开启调度时系统才会自动刷新。"
+        }</div>
+      </div>
   `;
 
   document.getElementById("view-setup").innerHTML = `
@@ -1610,7 +1611,7 @@ function renderStudySetup() {
           <div class="stack">
             <div class="item"><strong>避免爬太多无用数据</strong><div class="small">先定义业务问题，系统再反推关键词和来源。</div></div>
             <div class="item"><strong>让输出更像决策产品</strong><div class="small">不是给你帖子列表，而是给你推荐客群、机会假设和包装方向。</div></div>
-            <div class="item"><strong>新增关键词能立即生效</strong><div class="small">创建后系统会强制先跑 browser 首轮发现，再自动切回 adaptive。</div></div>
+            <div class="item"><strong>新增关键词能立即生效</strong><div class="small">创建后系统会先按 browser 手动首跑；后续默认不会自动刷新，除非你主动开启调度。</div></div>
           </div>
         </div>
       </div>
@@ -1685,7 +1686,7 @@ function renderStudySetup() {
             <div class="small">预估发现查询：${crawlCost.query_count} · 级别 ${crawlCost.level} · ${crawlCost.note}</div>
           </div>
           <div class="cta full">
-            <button type="submit" class="button primary">保存 Study 并立即首跑</button>
+            <button type="submit" class="button primary">保存 Study 并手动首跑</button>
           </div>
         </form>
       </div>
@@ -1700,8 +1701,8 @@ function renderStudySetup() {
           ${studyDraftMarkup(latestStudyDraft)}
         </div>
         <div class="section-head" style="margin-top: 18px;">
-          <div><div class="label">自动运行策略</div><h2>首次先 browser，后续回到 adaptive</h2></div>
-          <p>新增关键词后，系统会先用 browser 模式发现新 thread；首跑完成后，自动调度继续走 adaptive。</p>
+          <div><div class="label">运行策略</div><h2>默认只在你手动运行时开始</h2></div>
+          <p>新增关键词后，系统会先用 browser 模式手动首跑发现新 thread；后续默认不自动刷新，只有你主动开启调度时才会按 adaptive 运行。</p>
         </div>
         <form id="schedule-form" class="form-grid">
           <label class="field">
@@ -2194,7 +2195,7 @@ function studyDraftMarkup(draft) {
         </div>
         <div class="item">
           <strong>后续调度建议</strong>
-          <div class="small">${draft.suggested_schedule_mode || "adaptive"} / 每 ${draft.suggested_interval_hours || 24}h 自动刷新。</div>
+          <div class="small">${draft.suggested_schedule_enabled ? `${draft.suggested_schedule_mode || "adaptive"} / 每 ${draft.suggested_interval_hours || 24}h 自动刷新` : "默认关闭自动调度，需要时再手动开启。"}</div>
         </div>
       </div>
       ${
@@ -2551,7 +2552,7 @@ function bindEvents() {
       const payload = {
         ...currentStudySetupPayload(),
         auto_run: {
-          enabled: true,
+          enabled: false,
           initial_mode: ensureStudySetupState().suggested_first_run_mode || "browser",
           schedule_mode: ensureStudySetupState().suggested_schedule_mode || "adaptive",
           interval_hours: ensureStudySetupState().suggested_interval_hours || 24,
@@ -2565,7 +2566,7 @@ function bindEvents() {
         await hydrateStudy(created.study.id);
         setActiveView(apiAvailable && created.queued_job ? "operations" : "dashboard");
         if (created.queued_job) {
-          showToast("Study 已创建并开始首跑", `${created.study.title} 已按 browser 首跑，并切回 adaptive 自动调度。`, "success");
+          showToast("Study 已创建并开始首跑", `${created.study.title} 已按 browser 手动首跑；后续不会自动刷新，除非你主动开启调度。`, "success");
         } else {
           showToast("Study 已创建", `${created.study.title} 已保存。`, "success");
         }
@@ -2593,7 +2594,7 @@ function bindEvents() {
       try {
         const response = await updateScheduleForStudy(payload);
         if (response?.normalization) {
-          showToast("调度已切回正式工作流", response.normalization.reason || "系统已自动改成 adaptive。", "success");
+          showToast("调度模式已更新", response.normalization.reason || "系统已自动改成 adaptive。", "success");
         } else if (response?.queued_job) {
           showToast("已保存调度配置", "调度已开启，并已立即排队一轮更新。", "success");
         } else {
@@ -2818,6 +2819,7 @@ function buildLocalStudyDraft(form) {
     recommended_outputs: ["Dashboard 每日看板", "Weekly Brief 周会简报", "Packaging Studio 产品包装建议"],
     suggested_first_run_mode: "browser",
     suggested_schedule_mode: "adaptive",
+    suggested_schedule_enabled: false,
     suggested_interval_hours: 24,
     crawl_cost_estimate: estimateStudySetupCost(recommendedSubreddits, recommendedKeywords),
     decision_checks: [

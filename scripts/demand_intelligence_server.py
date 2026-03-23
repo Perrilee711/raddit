@@ -335,7 +335,7 @@ def hybrid_runtime_summary() -> dict[str, Any]:
         "aggregation_execution": "api_local_worker",
         "recommended_first_run_mode": "browser",
         "recommended_schedule_mode": "adaptive",
-        "workflow_summary": "云上发任务，Mac 自动执行浏览器采集，结果聚合后自动回写前端。",
+        "workflow_summary": "云上发任务，Mac 自动执行浏览器采集；默认仅在你手动触发时运行，除非你明确开启自动调度。",
         "connected_worker_count": len(connected_workers),
         "worker_count": len(workers),
         "workers": workers,
@@ -2062,6 +2062,7 @@ def build_study_draft(form: dict[str, Any]) -> dict[str, Any]:
         "recommended_outputs": DEFAULT_TEMPLATE["recommended_outputs"],
         "suggested_first_run_mode": "browser",
         "suggested_schedule_mode": "adaptive",
+        "suggested_schedule_enabled": False,
         "suggested_interval_hours": 24,
         "crawl_cost_estimate": crawl_cost,
         "decision_checks": [
@@ -2681,7 +2682,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 normalization = {
                     "from": "seeded",
                     "to": "adaptive",
-                    "reason": "检测到已连接的 Mac Worker，已切回 adaptive 正式工作流。",
+                    "reason": "你已主动启用自动调度，系统改用 adaptive 以兼容已连接的 Mac Worker。",
                 }
             if enabled and mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
                 self.send_json({"error": "remote_worker_unavailable", "mode": mode}, status=409)
@@ -2744,7 +2745,7 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             initial_mode = auto_run.get("initial_mode", draft.get("suggested_first_run_mode", "browser"))
             schedule_mode = auto_run.get("schedule_mode", draft.get("suggested_schedule_mode", "adaptive"))
             interval_hours = max(int(auto_run.get("interval_hours", draft.get("suggested_interval_hours", 24)) or 24), 1)
-            enable_schedule = bool(auto_run.get("enabled", True))
+            enable_schedule = bool(auto_run.get("enabled", draft.get("suggested_schedule_enabled", False)))
 
             if initial_mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": initial_mode}, status=400)
