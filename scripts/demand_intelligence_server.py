@@ -1131,7 +1131,7 @@ def runtime_alerts_summary(workers: list[dict[str, Any]] | None = None) -> dict[
                 "level": "success",
                 "title": "运行稳定",
                 "message": "Worker 在线，最近没有新的失败任务，当前可以继续发起研究和刷新。",
-                "action": "保持 adaptive 调度即可。",
+                "action": "默认保持手动运行；只有你明确需要定时刷新时再开启自动调度。",
             }
         )
 
