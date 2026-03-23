@@ -56,6 +56,7 @@ STUDY_ENTITY_DIR = SERVER_ROOT / "data" / "entities" / "studies"
 JOBS_DIR = SERVER_ROOT / "data" / "jobs"
 RUNTIME_STATE_DIR = SERVER_ROOT / "data" / "runtime" / "state"
 WORKER_STATE_DIR = RUNTIME_STATE_DIR / "workers"
+SYSTEM_SETTINGS_FILE = RUNTIME_STATE_DIR / "system_settings.json"
 USERS_FILE = SERVER_ROOT / "config" / "users.json"
 WORKERS_FILE = SERVER_ROOT / "config" / "workers.json"
 DEFAULT_INPUT = Path("/Users/perrilee/raddit/data/raw/fishgoo_dropshipping_expanded.jsonl")
@@ -250,6 +251,82 @@ def worker_state_file(worker_id: str) -> Path:
     return WORKER_STATE_DIR / f"{worker_id}.json"
 
 
+def default_system_settings() -> dict[str, Any]:
+    return {
+        "manual_only_mode": True,
+        "updated_at": None,
+        "updated_by": "system",
+    }
+
+
+def load_system_settings() -> dict[str, Any]:
+    settings = default_system_settings()
+    raw = load_json_file(SYSTEM_SETTINGS_FILE, {})
+    if isinstance(raw, dict):
+        if "manual_only_mode" in raw:
+            settings["manual_only_mode"] = bool(raw.get("manual_only_mode"))
+        if raw.get("updated_at"):
+            settings["updated_at"] = raw.get("updated_at")
+        if raw.get("updated_by"):
+            settings["updated_by"] = raw.get("updated_by")
+    return settings
+
+
+def save_system_settings(payload: dict[str, Any]) -> dict[str, Any]:
+    ensure_support_dirs()
+    settings = default_system_settings()
+    settings["manual_only_mode"] = bool(payload.get("manual_only_mode", settings["manual_only_mode"]))
+    settings["updated_at"] = payload.get("updated_at") or now_iso()
+    settings["updated_by"] = payload.get("updated_by") or "system"
+    SYSTEM_SETTINGS_FILE.write_text(
+        json.dumps(settings, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return settings
+
+
+def manual_only_reason(settings: dict[str, Any] | None = None) -> str:
+    resolved = settings or load_system_settings()
+    if resolved.get("manual_only_mode"):
+        return "全局保护已开启：仅允许手动运行。任何自动调度都会被系统阻止。"
+    return "全局保护已关闭：管理员可以按需开启自动调度。"
+
+
+def apply_manual_only_policy_to_record(record: dict[str, Any]) -> bool:
+    schedule = dict(record.get("schedule") or {})
+    changed = False
+    if schedule.get("enabled"):
+        schedule["enabled"] = False
+        changed = True
+    if schedule.get("next_run_at") is not None:
+        schedule["next_run_at"] = None
+        changed = True
+    if changed:
+        record["schedule"] = schedule
+    return changed
+
+
+def enforce_manual_only_mode_on_studies() -> int:
+    updated_count = 0
+    for record in list_study_records():
+        if apply_manual_only_policy_to_record(record):
+            save_study_record(record)
+            updated_count += 1
+    return updated_count
+
+
+def cancel_queued_schedule_jobs() -> int:
+    canceled = 0
+    for job in list_jobs():
+        if job.get("status") != "queued":
+            continue
+        if job.get("trigger") != "schedule":
+            continue
+        request_job_cancellation(job)
+        canceled += 1
+    return canceled
+
+
 def load_worker_runtime_state(worker_id: str) -> dict[str, Any]:
     return load_json_file(worker_state_file(worker_id), {})
 
@@ -325,6 +402,7 @@ def has_available_remote_worker(stage_kind: str | None = None) -> bool:
 
 
 def hybrid_runtime_summary() -> dict[str, Any]:
+    settings = load_system_settings()
     workers = list_worker_summaries()
     connected_workers = [worker for worker in workers if worker.get("status") == "connected"]
     summary = {
@@ -335,10 +413,16 @@ def hybrid_runtime_summary() -> dict[str, Any]:
         "aggregation_execution": "api_local_worker",
         "recommended_first_run_mode": "browser",
         "recommended_schedule_mode": "adaptive",
-        "workflow_summary": "云上发任务，Mac 自动执行浏览器采集；默认仅在你手动触发时运行，除非你明确开启自动调度。",
+        "workflow_summary": "云上发任务，Mac 自动执行浏览器采集；默认仅在你手动触发时运行，除非你明确开启自动调度。"
+        if settings.get("manual_only_mode")
+        else "云上发任务，Mac 自动执行浏览器采集；你可以在需要时启用自动调度。",
         "connected_worker_count": len(connected_workers),
         "worker_count": len(workers),
         "workers": workers,
+        "manual_only_mode": bool(settings.get("manual_only_mode")),
+        "manual_only_reason": manual_only_reason(settings),
+        "manual_only_updated_at": settings.get("updated_at"),
+        "manual_only_updated_by": settings.get("updated_by"),
     }
     summary.update(runtime_alerts_summary(workers))
     return summary
@@ -488,6 +572,8 @@ def summarize_record(record: dict[str, Any]) -> dict[str, Any]:
             "hybrid_ready": runtime.get("hybrid_ready", False),
             "connected_worker_count": runtime.get("connected_worker_count", 0),
             "description": runtime.get("workflow_summary"),
+            "manual_only_mode": runtime.get("manual_only_mode", False),
+            "manual_only_reason": runtime.get("manual_only_reason", ""),
         },
     }
 
@@ -564,6 +650,10 @@ def maybe_upgrade_record(record: dict[str, Any]) -> dict[str, Any]:
             "next_run_at": None,
         }
     schedule = record.get("schedule", {})
+    if load_system_settings().get("manual_only_mode"):
+        if apply_manual_only_policy_to_record(record):
+            schedule = record.get("schedule", {})
+            schedule_rewritten = True
     supports_remote_browser = bool(
         record.get("artifacts", {}).get("config_path")
         or record.get("source", {}).get("browser_config_path")
@@ -1058,6 +1148,7 @@ def recent_failed_jobs(window_hours: int = RUNTIME_ALERT_FAILURE_WINDOW_HOURS, l
 
 
 def runtime_alerts_summary(workers: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    settings = load_system_settings()
     worker_summaries = workers if workers is not None else list_worker_summaries()
     connected_workers = [worker for worker in worker_summaries if worker.get("status") == "connected"]
     stale_workers = [worker for worker in worker_summaries if worker.get("status") == "stale"]
@@ -1066,6 +1157,17 @@ def runtime_alerts_summary(workers: list[dict[str, Any]] | None = None) -> dict[
     canceling_jobs = [job for job in active_jobs if job.get("status") == "canceling"]
     failed_jobs = recent_failed_jobs()
     alerts: list[dict[str, Any]] = []
+
+    if settings.get("manual_only_mode"):
+        alerts.append(
+            {
+                "id": "manual-only-mode",
+                "level": "warn",
+                "title": "全局手动保护已开启",
+                "message": "任何自动调度都会被系统阻止，只有手动点击刷新或手动首跑才会执行。",
+                "action": "如果团队需要恢复定时刷新，请先关闭“仅允许手动运行”全局开关。",
+            }
+        )
 
     if not connected_workers:
         alerts.append(
@@ -1714,8 +1816,14 @@ def worker_loop(stop_event: threading.Event) -> None:
 def scheduler_loop(stop_event: threading.Event) -> None:
     while not stop_event.is_set():
         now = datetime.now()
+        settings = load_system_settings()
+        manual_only_mode = bool(settings.get("manual_only_mode"))
         for record in list_study_records():
             schedule = record.get("schedule", {})
+            if manual_only_mode:
+                if apply_manual_only_policy_to_record(record):
+                    save_study_record(record)
+                continue
             if not schedule.get("enabled"):
                 continue
             next_run = parse_iso(schedule.get("next_run_at"))
@@ -2284,6 +2392,13 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             self.send_json(hybrid_runtime_summary())
             return
 
+        if path == "/api/system/settings":
+            user = self.require_role("admin")
+            if user is None:
+                return
+            self.send_json({"settings": load_system_settings(), "runtime": hybrid_runtime_summary()})
+            return
+
         if path == "/api/study-template":
             self.send_json(self.api_bundle["study_template"])
             return
@@ -2473,6 +2588,34 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             payload = json.loads(raw.decode("utf-8") or "{}")
         except json.JSONDecodeError:
             self.send_json({"error": "invalid_json"}, status=400)
+            return
+
+        if path == "/api/system/settings":
+            user = self.require_role("admin")
+            if user is None:
+                return
+            current = load_system_settings()
+            updated = save_system_settings(
+                {
+                    **current,
+                    "manual_only_mode": bool(payload.get("manual_only_mode", current.get("manual_only_mode", True))),
+                    "updated_by": user.get("email") or user.get("id") or user.get("name") or "admin",
+                    "updated_at": now_iso(),
+                }
+            )
+            affected_studies = 0
+            canceled_schedule_jobs = 0
+            if updated.get("manual_only_mode"):
+                affected_studies = enforce_manual_only_mode_on_studies()
+                canceled_schedule_jobs = cancel_queued_schedule_jobs()
+            self.send_json(
+                {
+                    "settings": updated,
+                    "runtime": hybrid_runtime_summary(),
+                    "affected_studies": affected_studies,
+                    "canceled_schedule_jobs": canceled_schedule_jobs,
+                }
+            )
             return
 
         if path == "/api/worker/claim":
@@ -2673,10 +2816,18 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
             enabled = bool(payload.get("enabled", False))
             requested_mode = payload.get("mode", "adaptive")
             mode = requested_mode
+            settings = load_system_settings()
             if mode not in ALL_JOB_MODES:
                 self.send_json({"error": "invalid_mode", "mode": mode}, status=400)
                 return
             normalization = None
+            if settings.get("manual_only_mode") and enabled:
+                enabled = False
+                normalization = {
+                    "from": True,
+                    "to": False,
+                    "reason": manual_only_reason(settings),
+                }
             if enabled and mode == "seeded" and has_available_remote_worker("discover"):
                 mode = "adaptive"
                 normalization = {
@@ -2758,6 +2909,8 @@ class DemandIntelligenceHandler(BaseHTTPRequestHandler):
                 return
             if enable_schedule and schedule_mode == "seeded" and has_available_remote_worker("discover"):
                 schedule_mode = "adaptive"
+            if load_system_settings().get("manual_only_mode"):
+                enable_schedule = False
             if enable_schedule and schedule_mode in BROWSER_JOB_MODES and not has_available_remote_worker("discover"):
                 self.send_json({"error": "remote_worker_unavailable", "mode": schedule_mode}, status=409)
                 return

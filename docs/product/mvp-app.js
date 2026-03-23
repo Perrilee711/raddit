@@ -300,6 +300,10 @@ let runtimeStatus = {
   workflow_summary: "云上发任务，Mac 自动执行浏览器采集；默认仅在你手动触发时运行，除非你明确开启自动调度。",
   connected_worker_count: 0,
   worker_count: 0,
+  manual_only_mode: true,
+  manual_only_reason: "全局保护已开启：仅允许手动运行。任何自动调度都会被系统阻止。",
+  manual_only_updated_at: null,
+  manual_only_updated_by: null,
   workers: [],
   alerts: [],
   recent_failed_jobs: [],
@@ -343,6 +347,10 @@ const DEFAULT_STUDY_KEYWORD_GROUPS = [
     keywords: ["margin", "profit margin", "landed cost", "shipping costs", "cost down"],
   },
 ];
+
+function isManualOnlyMode() {
+  return Boolean(runtimeStatus.manual_only_mode);
+}
 
 const views = [
   { id: "dashboard", label: "Dashboard" },
@@ -454,6 +462,15 @@ function buildRuntimeAlerts() {
   if (alerts.length) return alerts;
 
   const fallback = [];
+  if (isManualOnlyMode()) {
+    fallback.push({
+      id: "manual-only-fallback",
+      level: "warn",
+      title: "全局手动保护已开启",
+      message: "任何自动调度都会被系统阻止，只有手动点击刷新或手动首跑才会执行。",
+      action: "如需恢复自动调度，请先关闭全局“仅允许手动运行”开关。",
+    });
+  }
   if (!runtimeStatus.hybrid_ready) {
     fallback.push({
       id: "worker-offline-fallback",
@@ -805,6 +822,7 @@ function renderMeta() {
         ? `工作流：云上调度 · Mac 执行 × ${runtimeStatus.connected_worker_count}`
         : "工作流：等待 Mac Worker 连接"
     );
+    pills.push(isManualOnlyMode() ? "全局保护：仅允许手动运行" : "全局保护：可启用自动调度");
   }
   meta.innerHTML = pills
     .map((text) => `<div class="pill">${text}</div>`)
@@ -836,6 +854,11 @@ function renderAuthPanel() {
       <span>A3 工作流</span>
       <strong>${runtimeStatus.hybrid_ready ? "云上调度 · Mac 执行" : "等待 Worker"}</strong>
       <span>${runtimeStatus.hybrid_ready ? `${runtimeStatus.connected_worker_count} 台在线` : "采集链暂未就绪"}</span>
+    </div>
+    <div class="auth-card ${isManualOnlyMode() ? "is-warning" : "is-success"}">
+      <span>全局运行策略</span>
+      <strong>${isManualOnlyMode() ? "仅允许手动运行" : "允许自动调度"}</strong>
+      <span>${isManualOnlyMode() ? "误点 schedule 也不会真的自动跑" : "管理员可按需开启定时刷新"}</span>
     </div>
     <div class="auth-card is-${workerTone}">
       <span>Worker</span>
@@ -1330,6 +1353,8 @@ function renderDashboard() {
         )
         .join("")
     : `<div class="job-row"><strong>还没有任务历史</strong><div class="small">当前 study 还没有触发过重建或定时抓取。</div></div>`;
+  const manualOnlyToggleLabel = isManualOnlyMode() ? "关闭全局手动锁" : "开启仅允许手动运行";
+  const manualOnlyToggleDisabled = !apiAvailable || authUser?.role !== "admin";
 
   document.getElementById("view-dashboard").innerHTML = `
     <section class="hero">
@@ -1453,13 +1478,24 @@ function renderDashboard() {
           <p>让团队理解当前看到的是一次静态快照，还是一条能够持续刷新的需求情报管线。</p>
         </div>
         <div class="ops-list">
+          <div class="ops-stat ${isManualOnlyMode() ? "is-protected" : ""}">
+            <div>
+              <strong>${isManualOnlyMode() ? "全局保护已开启：仅允许手动运行" : "全局保护已关闭：允许自动调度"}</strong>
+              <div class="small">${runtimeStatus.manual_only_reason || "系统会根据你的选择决定是否允许自动调度。"}${runtimeStatus.manual_only_updated_at ? `<br>最近更新：${formatDateTime(runtimeStatus.manual_only_updated_at, "暂无")} · ${runtimeStatus.manual_only_updated_by || "system"}` : ""}</div>
+            </div>
+            <div class="cta">
+              <button type="button" class="button ${isManualOnlyMode() ? "secondary" : "danger"} small-button" data-toggle-manual-only ${manualOnlyToggleDisabled ? "disabled" : ""}>
+                ${manualOnlyToggleLabel}
+              </button>
+            </div>
+          </div>
           <div class="ops-stat">
             <div>
               <strong>${currentSchedule.enabled ? "已开启自动调度" : "当前为手动运行模式"}</strong>
               <div class="small">模式：${modeLabel(currentSchedule.mode || "adaptive")}</div>
             </div>
             <div class="small">
-              下次运行：${formatDateTime(currentSchedule.next_run_at, "未设置")}<br>
+              下次运行：${formatDateTime(currentSchedule.next_run_at, isManualOnlyMode() ? "全局保护中" : "未设置")}<br>
               上次运行：${formatDateTime(currentSchedule.last_run_at, "暂无")}
             </div>
           </div>
@@ -1597,6 +1633,14 @@ function renderStudySetup() {
         }</div>
       </div>
   `;
+  const manualOnlyBannerMarkup = isManualOnlyMode()
+    ? `
+      <div class="workflow-banner is-locked">
+        <strong>全局保护已开启：仅允许手动运行</strong>
+        <div class="small">${runtimeStatus.manual_only_reason || "任何自动调度都会被系统阻止。"} 如需现在运行，请直接点击“刷新当前 Study”或“保存 Study 并手动首跑”。</div>
+      </div>
+    `
+    : "";
 
   document.getElementById("view-setup").innerHTML = `
     <section class="hero">
@@ -1697,6 +1741,7 @@ function renderStudySetup() {
           <p>系统会回一份 study draft，帮助负责人更快决定该研究什么，而不是先陷入抓取细节。</p>
         </div>
         ${workflowStatusMarkup}
+        ${manualOnlyBannerMarkup}
         <div id="study-draft-panel">
           ${studyDraftMarkup(latestStudyDraft)}
         </div>
@@ -1723,15 +1768,15 @@ function renderStudySetup() {
             <input type="number" min="1" name="interval_hours" value="${currentSchedule.interval_hours || 24}">
           </label>
           <label class="field inline-toggle">
-            <input type="checkbox" name="enabled" ${currentSchedule.enabled ? "checked" : ""}>
+            <input type="checkbox" name="enabled" ${currentSchedule.enabled && !isManualOnlyMode() ? "checked" : ""} ${isManualOnlyMode() ? "disabled" : ""}>
             <span>启用自动调度</span>
           </label>
           <label class="field inline-toggle full">
-            <input type="checkbox" name="start_now">
+            <input type="checkbox" name="start_now" ${isManualOnlyMode() ? "disabled" : ""}>
             <span>保存后立即排队跑一次</span>
           </label>
           <div class="cta full">
-            <button type="submit" class="button primary">保存调度配置</button>
+            <button type="submit" class="button primary">${isManualOnlyMode() ? "保存为手动配置" : "保存调度配置"}</button>
           </div>
         </form>
       </div>
@@ -1851,8 +1896,8 @@ function renderOperations() {
         <div class="mini-row ${study.active_job_count ? "is-running" : study.schedule?.enabled ? "is-completed" : ""}">
           <strong>${study.title}</strong>
           <div class="small">${study.market}</div>
-          <div class="small">调度：${study.schedule?.enabled ? `开启 / ${study.schedule.interval_hours}h / ${modeLabel(study.schedule.mode)}` : "未开启"}</div>
-          <div class="small">下次运行：${formatDateTime(study.schedule?.next_run_at, "未设置")}</div>
+          <div class="small">调度：${isManualOnlyMode() ? "全局手动保护中" : study.schedule?.enabled ? `开启 / ${study.schedule.interval_hours}h / ${modeLabel(study.schedule.mode)}` : "未开启"}</div>
+          <div class="small">下次运行：${formatDateTime(study.schedule?.next_run_at, isManualOnlyMode() ? "全局保护中" : "未设置")}</div>
           ${
             study.active_queue_lane
               ? `<div class="small">当前编排：${laneLabel(study.active_queue_lane)} · ${study.active_priority_label || "normal"}${study.active_priority_score ? ` (${study.active_priority_score})` : ""}</div>`
@@ -1863,8 +1908,8 @@ function renderOperations() {
             <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="seeded">跑 seeded</button>
             <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="browser">跑 browser</button>
             <button type="button" class="button secondary" data-run-study-id="${study.id}" data-run-mode="hot_threads">跑 hot_threads</button>
-            <button type="button" class="button secondary" data-toggle-schedule-study-id="${study.id}">
-              ${study.schedule?.enabled ? "暂停调度" : "启用调度"}
+            <button type="button" class="button secondary" data-toggle-schedule-study-id="${study.id}" ${isManualOnlyMode() ? "disabled" : ""}>
+              ${isManualOnlyMode() ? "全局保护中" : study.schedule?.enabled ? "暂停调度" : "启用调度"}
             </button>
           </div>
         </div>
@@ -2458,8 +2503,39 @@ function bindEvents() {
       return;
     }
 
+    const toggleManualOnlyButton = event.target.closest("[data-toggle-manual-only]");
+    if (toggleManualOnlyButton) {
+      const nextValue = !isManualOnlyMode();
+      toggleManualOnlyButton.disabled = true;
+      try {
+        const response = await updateSystemSettings({ manual_only_mode: nextValue });
+        if (response?.runtime) {
+          runtimeStatus = response.runtime;
+        }
+        showToast(
+          nextValue ? "已开启全局手动保护" : "已关闭全局手动保护",
+          nextValue
+            ? `系统已阻止所有自动调度${response?.affected_studies ? `，并清理了 ${response.affected_studies} 个 study 的定时配置` : ""}。`
+            : "现在管理员可以按需重新开启自动调度。",
+          nextValue ? "warn" : "success"
+        );
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await pollCurrentStudy();
+      } catch (error) {
+        console.warn("Toggle manual-only mode failed:", error);
+        showToast("全局开关更新失败", "请确认当前账号有管理员权限，并稍后重试。", "error");
+      } finally {
+        toggleManualOnlyButton.disabled = false;
+      }
+      return;
+    }
+
     const toggleScheduleButton = event.target.closest("[data-toggle-schedule-study-id]");
     if (toggleScheduleButton) {
+      if (isManualOnlyMode()) {
+        showToast("全局手动保护已开启", "当前不允许启用自动调度。如需运行，请直接手动刷新当前 Study。", "warn");
+        return;
+      }
       const studyId = toggleScheduleButton.dataset.toggleScheduleStudyId;
       const study = getStudyById(studyId);
       if (!study) return;
@@ -2588,13 +2664,13 @@ function bindEvents() {
         study_id: formData.get("study_id"),
         mode: formData.get("mode"),
         interval_hours: Number(formData.get("interval_hours") || 24),
-        enabled: formData.get("enabled") === "on",
-        start_now: formData.get("start_now") === "on",
+        enabled: !isManualOnlyMode() && formData.get("enabled") === "on",
+        start_now: !isManualOnlyMode() && formData.get("start_now") === "on",
       };
       try {
         const response = await updateScheduleForStudy(payload);
         if (response?.normalization) {
-          showToast("调度模式已更新", response.normalization.reason || "系统已自动改成 adaptive。", "success");
+          showToast("调度已被全局保护拦截", response.normalization.reason || "系统已自动改成手动模式。", "warn");
         } else if (response?.queued_job) {
           showToast("已保存调度配置", "调度已开启，并已立即排队一轮更新。", "success");
         } else {
@@ -2783,6 +2859,14 @@ async function updateScheduleForStudy(payload) {
       interval_hours: payload.interval_hours,
       start_now: payload.start_now,
     }),
+  });
+}
+
+async function updateSystemSettings(payload) {
+  if (!isHttpMode()) return { settings: { manual_only_mode: Boolean(payload.manual_only_mode) } };
+  return apiFetchJson("/api/system/settings", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

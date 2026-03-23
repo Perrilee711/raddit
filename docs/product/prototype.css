@@ -430,6 +430,11 @@ h1, h2, h3, h4, p {
   gap: 12px;
 }
 
+.ops-stat.is-protected {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(255, 247, 237, 0.92);
+}
+
 .ops-stat strong {
   font-size: 16px;
 }
@@ -1013,6 +1018,11 @@ h1, h2, h3, h4, p {
 .workflow-banner.is-pending {
   border-color: rgba(245, 158, 11, 0.22);
   background: rgba(255, 247, 237, 0.94);
+}
+
+.workflow-banner.is-locked {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(254, 242, 242, 0.94);
 }
 
 .field span {
@@ -1772,6 +1782,13 @@ h1, h2, h3, h4, p {
 
 .button:active {
   transform: scale(0.98);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+  box-shadow: none;
 }
 
 .card,
