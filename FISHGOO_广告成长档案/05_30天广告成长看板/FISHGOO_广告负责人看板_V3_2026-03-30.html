@@ -246,8 +246,95 @@
       color: #3f4f63;
       font-size: 14px;
     }
+    .chart-shell {
+      margin-top: 12px;
+      padding: 18px 18px 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fbfcff 0%, #f4f8ff 100%);
+      border: 1px solid #dbe5f6;
+    }
+    .chart-title {
+      margin: 0 0 4px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .chart-subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+      min-height: 280px;
+      padding: 0 6px;
+    }
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-height: 260px;
+      justify-content: end;
+    }
+    .bar-stack {
+      display: flex;
+      gap: 6px;
+      align-items: end;
+      min-height: 220px;
+    }
+    .bar-single {
+      width: 40px;
+      border-radius: 12px 12px 6px 6px;
+      background: linear-gradient(180deg, #5d8fff 0%, #2159a8 100%);
+      box-shadow: inset 0 -8px 18px rgba(13, 37, 77, 0.18);
+    }
+    .bar-order {
+      width: 16px;
+      border-radius: 10px 10px 4px 4px;
+      background: linear-gradient(180deg, #8ab5ff 0%, #2f6fde 100%);
+    }
+    .bar-paid {
+      width: 16px;
+      border-radius: 10px 10px 4px 4px;
+      background: linear-gradient(180deg, #84d8b2 0%, #0f9d6f 100%);
+    }
+    .bar-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #355074;
+    }
+    .bar-value {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.35;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend i {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
     @media (max-width: 1100px) {
       .top-metrics, .grid-5, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .bar-single { width: 34px; }
     }
   </style>
 </head>
@@ -284,6 +371,7 @@
 
     <div class="tabbar">
       <button class="tab-btn active" data-tab="baseline">优化前基线</button>
+      <button class="tab-btn" data-tab="monthly">月度业绩</button>
       <button class="tab-btn" data-tab="audit">调整后日审计</button>
       <button class="tab-btn" data-tab="ops">当前驾驶舱</button>
       <button class="tab-btn" data-tab="learning">学习成长</button>
@@ -396,6 +484,114 @@
           <tr><td>search -品牌-0925</td><td>Search</td><td>$1,844.91</td><td>206.00</td><td>$8.96</td></tr>
           <tr><td>pmax- - 竞对APP+意向受众 0123</td><td>PMax</td><td>$1,214.58</td><td>88.17</td><td>$13.78</td></tr>
         </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-monthly">
+      <h2 class="section-title">月度业绩</h2>
+      <div class="callout">这页直接使用你提供的业务 xlsx 原始数据按月汇总。主图默认看 <strong>总营收</strong>，图表采用 <strong>美元管理口径</strong> 展示；月度明细表同时保留 <strong>人民币原始值</strong> 和 <strong>美元管理口径</strong>。注册数、下单用户数、支付用户数当前源表未提供月度用户级字段，先保留待补。</div>
+
+      <div class="grid grid-5">
+        <div class="metric-card">
+          <div class="metric-label">累计总营收</div>
+          <div class="metric-value">$17,311.56</div>
+          <div class="metric-note">原始值：¥119,313.02</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">月均总营收</div>
+          <div class="metric-value">$2,473.08</div>
+          <div class="metric-note">近 7 个自然月平均</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">最佳月份</div>
+          <div class="metric-value">$3,331.40</div>
+          <div class="metric-note">2026-02，原始值：¥22,960.34</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">最近月份</div>
+          <div class="metric-value">$2,459.06</div>
+          <div class="metric-note">2026-03，原始值：¥16,948.09</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">用户级辅助指标</div>
+          <div class="metric-value">待补</div>
+          <div class="metric-note">注册数 / 下单用户数 / 支付用户数需补月度源表</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="chart-shell">
+            <h3 class="chart-title">月度总营收走势</h3>
+            <p class="chart-subtitle">主图，单位为美元管理口径。你每天判断广告经营表现时，这张图优先看。</p>
+            <div class="bars">
+              <div class="bar-group"><div class="bar-value">$323</div><div class="bar-stack"><div class="bar-single" style="height:21px;"></div></div><div class="bar-label">2025-09</div></div>
+              <div class="bar-group"><div class="bar-value">$2,510</div><div class="bar-stack"><div class="bar-single" style="height:166px;"></div></div><div class="bar-label">2025-10</div></div>
+              <div class="bar-group"><div class="bar-value">$2,650</div><div class="bar-stack"><div class="bar-single" style="height:175px;"></div></div><div class="bar-label">2025-11</div></div>
+              <div class="bar-group"><div class="bar-value">$3,037</div><div class="bar-stack"><div class="bar-single" style="height:201px;"></div></div><div class="bar-label">2025-12</div></div>
+              <div class="bar-group"><div class="bar-value">$3,001</div><div class="bar-stack"><div class="bar-single" style="height:198px;"></div></div><div class="bar-label">2026-01</div></div>
+              <div class="bar-group"><div class="bar-value">$3,331</div><div class="bar-stack"><div class="bar-single" style="height:220px;"></div></div><div class="bar-label">2026-02</div></div>
+              <div class="bar-group"><div class="bar-value">$2,459</div><div class="bar-stack"><div class="bar-single" style="height:162px;"></div></div><div class="bar-label">2026-03</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chart-shell">
+            <h3 class="chart-title">月度漏斗金额</h3>
+            <p class="chart-subtitle">辅助图，帮助你看“下单很高但支付没跟上”还是“支付健康但营收一般”。</p>
+            <div class="bars">
+              <div class="bar-group"><div class="bar-value">$2,839 / $382</div><div class="bar-stack"><div class="bar-order" style="height:48px;"></div><div class="bar-paid" style="height:6px;"></div></div><div class="bar-label">2025-09</div></div>
+              <div class="bar-group"><div class="bar-value">$4,037 / $2,168</div><div class="bar-stack"><div class="bar-order" style="height:68px;"></div><div class="bar-paid" style="height:36px;"></div></div><div class="bar-label">2025-10</div></div>
+              <div class="bar-group"><div class="bar-value">$4,735 / $2,039</div><div class="bar-stack"><div class="bar-order" style="height:79px;"></div><div class="bar-paid" style="height:34px;"></div></div><div class="bar-label">2025-11</div></div>
+              <div class="bar-group"><div class="bar-value">$6,075 / $2,415</div><div class="bar-stack"><div class="bar-order" style="height:102px;"></div><div class="bar-paid" style="height:40px;"></div></div><div class="bar-label">2025-12</div></div>
+              <div class="bar-group"><div class="bar-value">$10,752 / $3,335</div><div class="bar-stack"><div class="bar-order" style="height:180px;"></div><div class="bar-paid" style="height:56px;"></div></div><div class="bar-label">2026-01</div></div>
+              <div class="bar-group"><div class="bar-value">$3,444 / $2,247</div><div class="bar-stack"><div class="bar-order" style="height:58px;"></div><div class="bar-paid" style="height:38px;"></div></div><div class="bar-label">2026-02</div></div>
+              <div class="bar-group"><div class="bar-value">$6,726 / $1,637</div><div class="bar-stack"><div class="bar-order" style="height:113px;"></div><div class="bar-paid" style="height:27px;"></div></div><div class="bar-label">2026-03</div></div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#2f6fde;"></i>下单 GMV</span>
+              <span><i style="background:#0f9d6f;"></i>已支付 GMV</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="chart-shell">
+            <h3 class="chart-title">月度订单数量</h3>
+            <p class="chart-subtitle">辅助图，帮助你判断订单量和支付量是否同步增长。</p>
+            <div class="bars">
+              <div class="bar-group"><div class="bar-value">67 / 27</div><div class="bar-stack"><div class="bar-order" style="height:74px;"></div><div class="bar-paid" style="height:30px;"></div></div><div class="bar-label">2025-09</div></div>
+              <div class="bar-group"><div class="bar-value">111 / 72</div><div class="bar-stack"><div class="bar-order" style="height:123px;"></div><div class="bar-paid" style="height:80px;"></div></div><div class="bar-label">2025-10</div></div>
+              <div class="bar-group"><div class="bar-value">135 / 54</div><div class="bar-stack"><div class="bar-order" style="height:149px;"></div><div class="bar-paid" style="height:60px;"></div></div><div class="bar-label">2025-11</div></div>
+              <div class="bar-group"><div class="bar-value">163 / 67</div><div class="bar-stack"><div class="bar-order" style="height:180px;"></div><div class="bar-paid" style="height:74px;"></div></div><div class="bar-label">2025-12</div></div>
+              <div class="bar-group"><div class="bar-value">88 / 59</div><div class="bar-stack"><div class="bar-order" style="height:97px;"></div><div class="bar-paid" style="height:65px;"></div></div><div class="bar-label">2026-01</div></div>
+              <div class="bar-group"><div class="bar-value">95 / 60</div><div class="bar-stack"><div class="bar-order" style="height:105px;"></div><div class="bar-paid" style="height:66px;"></div></div><div class="bar-label">2026-02</div></div>
+              <div class="bar-group"><div class="bar-value">132 / 59</div><div class="bar-stack"><div class="bar-order" style="height:146px;"></div><div class="bar-paid" style="height:65px;"></div></div><div class="bar-label">2026-03</div></div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#2f6fde;"></i>下单订单数量</span>
+              <span><i style="background:#0f9d6f;"></i>已支付订单数量</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>月度明细表</h3>
+          <table>
+            <tr><th>月份</th><th>总营收（CNY）</th><th>总营收（USD）</th><th>下单GMV（CNY）</th><th>已支付GMV（CNY）</th><th>下单单量</th><th>支付单量</th></tr>
+            <tr><td>2025-09</td><td>¥2,229.01</td><td>$323.42</td><td>¥19,563.83</td><td>¥2,631.85</td><td>67</td><td>27</td></tr>
+            <tr><td>2025-10</td><td>¥17,295.97</td><td>$2,509.54</td><td>¥27,823.30</td><td>¥14,939.02</td><td>111</td><td>72</td></tr>
+            <tr><td>2025-11</td><td>¥18,264.33</td><td>$2,650.04</td><td>¥32,634.08</td><td>¥14,054.58</td><td>135</td><td>54</td></tr>
+            <tr><td>2025-12</td><td>¥20,930.09</td><td>$3,036.82</td><td>¥41,872.90</td><td>¥16,645.01</td><td>163</td><td>67</td></tr>
+            <tr><td>2026-01</td><td>¥20,685.19</td><td>$3,001.29</td><td>¥74,102.29</td><td>¥22,984.24</td><td>88</td><td>59</td></tr>
+            <tr><td>2026-02</td><td>¥22,960.34</td><td>$3,331.40</td><td>¥23,734.28</td><td>¥15,489.37</td><td>95</td><td>60</td></tr>
+            <tr><td>2026-03</td><td>¥16,948.09</td><td>$2,459.06</td><td>¥46,356.09</td><td>¥11,282.88</td><td>132</td><td>59</td></tr>
+          </table>
+          <div class="callout">用户级辅助指标待补：注册数、下单用户数、支付用户数。当前源表是订单和营收维度，所以这版先保证“金额”和“订单量”口径稳定。</div>
+        </div>
       </div>
     </section>
 
@@ -776,6 +972,7 @@
     const buttons = document.querySelectorAll('.tab-btn');
     const panels = {
       baseline: document.getElementById('tab-baseline'),
+      monthly: document.getElementById('tab-monthly'),
       audit: document.getElementById('tab-audit'),
       ops: document.getElementById('tab-ops'),
       learning: document.getElementById('tab-learning'),
