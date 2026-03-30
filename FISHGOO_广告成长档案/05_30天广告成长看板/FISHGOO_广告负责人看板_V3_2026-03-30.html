@@ -131,6 +131,7 @@
       margin-top: 16px;
     }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     table {
@@ -199,8 +200,54 @@
     .subtle {
       color: var(--muted);
     }
+    .timeline {
+      position: relative;
+      margin-top: 18px;
+      padding-left: 24px;
+      border-left: 3px solid #d5e2f7;
+    }
+    .timeline-item {
+      position: relative;
+      margin: 0 0 18px;
+      padding: 4px 0 4px 20px;
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -33px;
+      top: 12px;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 3px solid #2f62b6;
+      box-shadow: 0 0 0 4px #eef4ff;
+    }
+    .timeline-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .timeline-day {
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .timeline-date {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .timeline-focus {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .timeline-note {
+      color: #3f4f63;
+      font-size: 14px;
+    }
     @media (max-width: 1100px) {
-      .top-metrics, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .top-metrics, .grid-5, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -244,11 +291,17 @@
 
     <section class="tab-panel active" id="tab-baseline">
       <h2 class="section-title">优化前基线</h2>
-      <div class="grid grid-4">
+      <div class="callout">数据来源：<code>主站点谷歌广告投放数据汇总0324.xlsx</code> + <code>日度推广者数据（本级or下级）_2026-03-30T13_38_09.093185019+08_00.xlsx</code>。当前经营基线以 <code>xlsx</code> 最后一行 <code>合计</code> 为准，总营收看最后一列 <code>总营收</code>。看板同时保留人民币原始值与美元管理口径；美元换算采用 <code>2026-03-23</code> 参考汇率 <code>1 USD = 6.8921 CNY</code>。</div>
+      <div class="grid grid-5">
         <div class="metric-card">
           <div class="metric-label">历史总花费</div>
-          <div class="metric-value">$13,044.85</div>
-          <div class="metric-note">平台口径 campaign 总账</div>
+          <div class="metric-value">$13,044.84</div>
+          <div class="metric-note">Google Ads 0324 导出确认</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">实际转化客户数</div>
+          <div class="metric-value">642</div>
+          <div class="metric-note">概述页口径，平均实际 CPA $20.32</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">平台转化总数</div>
@@ -256,24 +309,26 @@
           <div class="metric-note">平均平台 CPA $17.89</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">总注册用户</div>
-          <div class="metric-value">642</div>
-          <div class="metric-note">业务口径</div>
+          <div class="metric-label">历史总营收</div>
+          <div class="metric-value">¥119,313.02</div>
+          <div class="metric-note">主口径，同时对应 $17,311.56 管理口径</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">注册 → 支付率</div>
-          <div class="metric-value">7.79%</div>
-          <div class="metric-note">历史漏斗偏弱</div>
+          <div class="metric-label">经营 ROI</div>
+          <div class="metric-value">1.33x</div>
+          <div class="metric-note">公式：总营收 / 总花费，按美元管理口径</div>
         </div>
       </div>
 
       <div class="grid grid-2">
         <div class="card">
-          <h3>历史总账与漏斗</h3>
+          <h3>历史平台总账与漏斗</h3>
           <table>
             <tr><th>指标</th><th>数值</th><th>解读</th></tr>
+            <tr><td>平均 CPC</td><td>$0.39</td><td>点击成本并不高</td></tr>
             <tr><td>总点击</td><td>33,742</td><td>量不小</td></tr>
             <tr><td>总展示</td><td>828,101</td><td>覆盖充分</td></tr>
+            <tr><td>总注册用户</td><td>642</td><td>已经有较大上游量</td></tr>
             <tr><td>总下单用户</td><td>122</td><td>中间漏斗有流失</td></tr>
             <tr><td>总支付用户</td><td>50</td><td>最终支付量有限</td></tr>
             <tr><td>广告 ROI</td><td>1.22</td><td>账面勉强成立</td></tr>
@@ -282,6 +337,30 @@
           <div class="callout">这个 tab 的作用，是提醒你为什么当初必须改：不是没流量，而是“花得不够干净、学得不够对、经营结果不够好”。</div>
         </div>
         <div class="card">
+          <h3>历史销售额基线</h3>
+          <table>
+            <tr><th>指标</th><th>原始人民币口径</th><th>美元管理口径</th></tr>
+            <tr><td>下单订单数量</td><td>791</td><td>791</td></tr>
+            <tr><td>下单GMV</td><td>¥266,086.77</td><td>$38,607.50</td></tr>
+            <tr><td>已支付订单数量</td><td>398</td><td>398</td></tr>
+            <tr><td>已支付GMV</td><td>¥98,026.95</td><td>$14,223.09</td></tr>
+            <tr><td>订单营收</td><td>¥82,389.67</td><td>$11,954.22</td></tr>
+            <tr><td>提包GMV</td><td>¥47,722.71</td><td>$6,924.26</td></tr>
+            <tr><td>包裹销售额</td><td>¥37,511.71</td><td>$5,442.71</td></tr>
+            <tr><td>包裹营收</td><td>¥36,923.35</td><td>$5,357.34</td></tr>
+            <tr><td>总营收</td><td>¥119,313.02</td><td>$17,311.56</td></tr>
+            <tr><td>经营 ROI</td><td>-</td><td>1.33x</td></tr>
+            <tr><td>支付客单价</td><td>¥246.30</td><td>$35.74</td></tr>
+            <tr><td>已支付GMV / Spend</td><td>-</td><td>1.09x</td></tr>
+            <tr><td>订单营收 / Spend</td><td>-</td><td>0.92x</td></tr>
+            <tr><td>新客 / 老客销售额</td><td>待补</td><td>待补</td></tr>
+          </table>
+          <div class="warn-box" style="margin-top:12px;">这里现在已经按你确认的口径恢复：原始业务真相看人民币，和广告花费对比时再看美元管理口径。美元口径只用于经营分析，不作为财务结算口径。</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
           <h3>调整前最大问题</h3>
           <ul class="list">
             <li>历史最有效资产是品牌 Search，不是竞对流量。</li>
@@ -289,8 +368,22 @@
             <li>调整前 live 状态更像“错误模型继续被放大”。</li>
             <li>`Purchase` 没进入主学习体系，measurement 是最核心问题。</li>
             <li>品牌与新增流量没有被严格拆开，导致读数容易失真。</li>
+            <li>历史真实业务基线现在以这份 <code>xlsx</code> 的 <code>合计</code> 行为准。</li>
+            <li>这次优化前经营基线应优先看：<code>总营收 119313.02 RMB</code>。</li>
           </ul>
           <div class="warn-box" style="margin-top:12px;">如果没有这个基线，你后面每天看到的数据就没有参照系，也看不出自己到底有没有变强。</div>
+        </div>
+        <div class="card">
+          <h3>优化前基线怎么读</h3>
+          <ul class="list">
+            <li><code>729</code> 是 Google Ads 平台转化动作总数，不等于真实支付人数。</li>
+            <li><code>642</code> 是概述页“实际转化客户数”，比平台转化更接近业务人数口径。</li>
+            <li>这次真实业务基线以 <code>xlsx</code> 最后一行 <code>合计</code> 为准，不再用之前的 <code>csv</code> 明细表做总汇总。</li>
+            <li><code>总营收</code> 是你强调的主口径，所以这次历史经营基线以 <code>119313.02 RMB</code> 为主数。</li>
+            <li>看板里同时保留 <code>人民币原始值</code> 和 <code>美元管理口径</code>，方便你既看业务真相，也能和 Google Ads 的美元花费对比。</li>
+            <li>之前文档里的 <code>广告 ROI 1.22 / 渠道 ROI 0.82</code> 属于旧复盘口径，不等于这里的经营金额口径。</li>
+            <li>下一步如果你再给我优化后的真实业务表，我就能用同一套口径直接做“优化前 vs 优化后”的经营对照。</li>
+          </ul>
         </div>
       </div>
 
@@ -473,53 +566,40 @@
 
     <section class="tab-panel" id="tab-learning">
       <h2 class="section-title">学习成长</h2>
-      <div class="grid grid-2">
-        <div class="card">
-          <h3>这次项目真正要练的 4 个基本功</h3>
-          <ol class="list">
-            <li>看 campaign 状态、预算和类型。</li>
-            <li>看 conversion goal 到底指向什么。</li>
-            <li>看关键词是品牌、竞品还是泛词。</li>
-            <li>看每天的数据到底能说明什么、不能说明什么。</li>
-          </ol>
+      <div class="grid grid-3">
+        <div class="metric-card">
+          <div class="metric-label">当前学习阶段</div>
+          <div class="metric-value">Day 5</div>
+          <div class="metric-note">已进入“看经营基线”阶段</div>
         </div>
-        <div class="card">
-          <h3>当前最重要的学习点</h3>
-          <ul class="list">
-            <li>看板不能只写心得，必须先写基础数据。</li>
-            <li>日常操盘先看 measurement，再看花费，再看转化。</li>
-            <li>品牌稳定不等于拓新模型成立。</li>
-            <li>早上看到 0 花费，不等于广告停了。</li>
-          </ul>
+        <div class="metric-card">
+          <div class="metric-label">本轮训练主轴</div>
+          <div class="metric-value">先判断</div>
+          <div class="metric-note">先学会判断账户，再谈优化动作</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">30 天目标</div>
+          <div class="metric-value">能独立复盘</div>
+          <div class="metric-note">看懂目标、动作、验证、经营结果</div>
         </div>
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <h3>还需要补的负责人指标</h3>
-        <table>
-          <tr><th>指标组</th><th>建议补充</th><th>为什么重要</th></tr>
-          <tr><td>花费节奏</td><td>今日 Spend、昨日 Spend、最近 7 天 Spend、调整后累计 Spend、理论日预算上限、预算执行率</td><td>判断是花不出去还是控得太死</td></tr>
-          <tr><td>流量质量</td><td>CTR、CPC、品牌词占比、竞品词占比、脏词占比、Top Search Terms</td><td>判断钱买来的是什么流量</td></tr>
-          <tr><td>转化链路</td><td>Sign-ups、Order Users、First Purchase Users、Purchase Transactions、Purchase Value、Sign-up CPA、First Purchase CAC、Purchase CAC</td><td>Fishgoo 是长链路业务，不能只看 Ads 转化</td></tr>
-          <tr><td>结构健康</td><td>活跃 campaign 数、Brand/Non-brand/PMax/Remarketing 是否齐全、legacy conversion、Campaign goal 对齐度</td><td>决定今天能不能调、该不该调</td></tr>
-        </table>
+        <h3>先看这里：本轮学习重点</h3>
+        <ul class="list">
+          <li>先把 conversion hierarchy 看懂。</li>
+          <li>再把预算节奏和结构判断练熟。</li>
+          <li>最后学会自己讲清楚“为什么现在不能贸然放量”。</li>
+        </ul>
       </div>
 
-      <div class="grid grid-3">
+      <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <h3>今天的数据能说明什么</h3>
+          <h3>你已经练到哪里</h3>
           <ul class="list">
-            <li>账户目前处在低风险状态。</li>
-            <li>旧高风险系列没有继续消耗。</li>
-            <li>当前投放结构仍高度保守。</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>今天的数据不能说明什么</h3>
-          <ul class="list">
-            <li>不能说明真实支付成本改善了。</li>
-            <li>不能说明购买模型已经跑通。</li>
-            <li>不能说明这轮重建已经成功。</li>
+            <li>已经能区分“止血”和“重建”。</li>
+            <li>已经会看平台数据和真实经营数据的区别。</li>
+            <li>已经开始接触负责人视角的 ROI 与总营收。</li>
           </ul>
         </div>
         <div class="card">
@@ -531,6 +611,162 @@
             <li>今天有没有异常？</li>
             <li>今天到底该怎么调？</li>
           </ol>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>30 天广告学习时间线</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 1</span><span class="timeline-date">2026-03-26</span><span class="pill pill-ok">已完成</span></div>
+            <div class="timeline-focus">主题：先看设置，不看成绩</div>
+            <div class="timeline-note">你学会了先核对 campaign 状态、旧 PMax 是否暂停、当前活跃系列是不是只剩品牌 Search。结论：止血动作开始生效，但 measurement 没修好。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 2</span><span class="timeline-date">2026-03-27</span><span class="pill pill-ok">已完成</span></div>
+            <div class="timeline-focus">主题：第二天看花费结构，不乱判 0 转化</div>
+            <div class="timeline-note">你学会了把“花费受控、流量干净”和“效果已经变好”分开看。结论：风险收缩持续，但支付模型仍未验证。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 3</span><span class="timeline-date">2026-03-28</span><span class="pill pill-warn">补课点</span></div>
+            <div class="timeline-focus">主题：重点盯 measurement 和搜索词</div>
+            <div class="timeline-note">这一天你最该练的是：看 `Purchase` 是否扶正、看 campaign 是否还在按 `SIGNUP` 学、看品牌词是否正常承接。即使没有单独日审，这一天也应作为固定复查点。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 4</span><span class="timeline-date">2026-03-29</span><span class="pill pill-ok">已完成</span></div>
+            <div class="timeline-focus">主题：止血有效，不等于重建完成</div>
+            <div class="timeline-note">你学会了区分“把错误停下来”和“把新模型建起来”。这一天的核心结论是：投手现在做到的是前者，不是后者。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 5</span><span class="timeline-date">2026-03-30</span><span class="pill pill-ok">已完成</span></div>
+            <div class="timeline-focus">主题：把平台数据和真实经营基线接上</div>
+            <div class="timeline-note">你学会了看 `xlsx 合计` 行、看总营收口径、看人民币原始值和美元管理口径，并开始把经营 ROI 纳入负责人视角。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 6</span><span class="timeline-date">2026-03-31</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：预算节奏与执行率</div>
+            <div class="timeline-note">重点学会：今日 Spend、理论日预算、预算执行率。判断是花不出去、控得太死，还是结构根本没启动。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 7</span><span class="timeline-date">2026-04-01</span><span class="pill pill-warn">周复盘</span></div>
+            <div class="timeline-focus">主题：第一周复盘</div>
+            <div class="timeline-note">你要能回答 5 个问题：今天花了多少钱、钱花在哪、系统学什么、有没有异常、现在该怎么调。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 8</span><span class="timeline-date">2026-04-02</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：Brand / Non-brand / PMax / Remarketing 结构识别</div>
+            <div class="timeline-note">学会看到一个账户时，先拆结构，而不是直接盯总花费或总 CPA。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 9</span><span class="timeline-date">2026-04-03</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：品牌词与竞品词</div>
+            <div class="timeline-note">学会分辨哪些词是保底需求，哪些词是高风险高成本词，以及为什么低预算阶段不能同时都做。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 10</span><span class="timeline-date">2026-04-04</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：搜索词质量与否词思路</div>
+            <div class="timeline-note">学会用搜索词报告判断：脏词、无效词、竞品词、品牌词各自该怎么处理。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 11</span><span class="timeline-date">2026-04-05</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：Primary / Secondary 基本功</div>
+            <div class="timeline-note">练会判断 Google Ads 到底在按哪个动作学习，这是你之后所有判断的根。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 12</span><span class="timeline-date">2026-04-06</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：Campaign-specific goals</div>
+            <div class="timeline-note">开始理解为什么 Brand、Remarketing、Cold traffic 不一定都应该学同一个目标。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 13</span><span class="timeline-date">2026-04-07</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：Sign_up / Place Order / First Purchase / Purchase 分层</div>
+            <div class="timeline-note">学会为 Fishgoo 这种长链路业务设计“更接近收入、又比 purchase 量更大”的中间目标。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 14</span><span class="timeline-date">2026-04-08</span><span class="pill pill-warn">阶段结论</span></div>
+            <div class="timeline-focus">主题：两周阶段判断</div>
+            <div class="timeline-note">到这一天，你要能判断：这轮调整还是止血，还是已经进入有效优化。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 15</span><span class="timeline-date">2026-04-09</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：出价策略与预算联动</div>
+            <div class="timeline-note">理解为什么目标没修好时不能放量，以及为什么预算变化会直接改变学习节奏。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 16</span><span class="timeline-date">2026-04-10</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：日预算、月预算、执行率</div>
+            <div class="timeline-note">学会把 `$1000/月` 这种总预算真正拆成日节奏，而不是停留在概念上。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 17</span><span class="timeline-date">2026-04-11</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：流量干净度</div>
+            <div class="timeline-note">开始练品牌词占比、竞品词占比、脏词占比，学会判断“钱买来的到底是什么”。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 18</span><span class="timeline-date">2026-04-12</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：长链路漏斗观察</div>
+            <div class="timeline-note">把注册、下单、支付三段分开看，避免只看 Ads 平台转化就下结论。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 19</span><span class="timeline-date">2026-04-13</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：落地页是否匹配目标</div>
+            <div class="timeline-note">学会判断一个页面更适合拉注册、拉下单，还是拉支付，不再把所有流量都导到同一页。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 20</span><span class="timeline-date">2026-04-14</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：品牌承接与再营销</div>
+            <div class="timeline-note">理解为什么 Brand / Remarketing 往往比冷启动更适合直接看 Purchase。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 21</span><span class="timeline-date">2026-04-15</span><span class="pill pill-warn">周复盘</span></div>
+            <div class="timeline-focus">主题：第三周复盘</div>
+            <div class="timeline-note">到这一天，你要开始回答：真实支付趋势是否开始有参考意义。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 22</span><span class="timeline-date">2026-04-16</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：经营指标 vs 平台指标</div>
+            <div class="timeline-note">继续加深理解：注册 CPA、支付 CAC、营收、ROI、ROAS 各自代表什么。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 23</span><span class="timeline-date">2026-04-17</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：新客 vs 老客</div>
+            <div class="timeline-note">学会区分“总 purchase 看起来很好”与“新客获取其实很差”之间的差异。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 24</span><span class="timeline-date">2026-04-18</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：负责人周报</div>
+            <div class="timeline-note">练习用老板能听懂的话说清楚：钱花了多少，买来了什么，还差什么。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 25</span><span class="timeline-date">2026-04-19</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：扩量前提</div>
+            <div class="timeline-note">开始建立尺度感：什么情况下可以加预算，什么情况下只是把错误放大。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 26</span><span class="timeline-date">2026-04-20</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：低预算结构管理</div>
+            <div class="timeline-note">再次复盘为什么 `$1000/月` 阶段必须结构极简，不能四处开花。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 27</span><span class="timeline-date">2026-04-21</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：异常处理 SOP</div>
+            <div class="timeline-note">学会遇到花费异常、转化掉线、目标错位时，先做哪 3 步，不再慌乱。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 28</span><span class="timeline-date">2026-04-22</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：月末经营复盘准备</div>
+            <div class="timeline-note">开始汇总“优化前 vs 优化后”的花费、营收、目标体系、结构变化。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 29</span><span class="timeline-date">2026-04-23</span><span class="pill pill-warn">计划中</span></div>
+            <div class="timeline-focus">主题：形成自己的判断模板</div>
+            <div class="timeline-note">把你这 30 天学到的内容沉淀成固定复盘模板，以后每轮优化都能复用。</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-head"><span class="timeline-day">Day 30</span><span class="timeline-date">2026-04-24</span><span class="pill pill-danger">月度结论</span></div>
+            <div class="timeline-focus">主题：正式回答老板的问题</div>
+            <div class="timeline-note">你要能独立讲清楚：真实支付模型有没有变好、ROI 有没有改善、下一步是继续止血、继续重建，还是准备扩量。</div>
+          </div>
         </div>
       </div>
     </section>
