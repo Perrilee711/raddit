@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FISHGOO 广告负责人看板 V3</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #667085;
+      --line: #d7dce5;
+      --brand: #2159a8;
+      --brand-soft: #eaf2ff;
+      --warn: #b54708;
+      --warn-soft: #fff3e8;
+      --danger: #b42318;
+      --danger-soft: #feeceb;
+      --ok: #027a48;
+      --ok-soft: #e8fff4;
+      --shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
+      --hero: linear-gradient(135deg, #fffdf8 0%, #ffffff 60%, #eef4ff 100%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #f7f3ea 0%, var(--bg) 22%, #eef3fb 100%);
+      color: var(--ink);
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 20px 80px;
+    }
+    .hero {
+      padding: 28px 30px;
+      border: 1px solid #ddd4c5;
+      border-radius: 28px;
+      background: var(--hero);
+      box-shadow: var(--shadow);
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 1040px;
+    }
+    .banner {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid #f2c7c4;
+      background: linear-gradient(90deg, var(--danger-soft), #fff7f6);
+      color: #7a271a;
+      font-weight: 700;
+    }
+    .top-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .metric-card, .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 20px 20px 18px;
+      box-shadow: var(--shadow);
+    }
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .metric-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tabbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 22px 0 16px;
+    }
+    .tab-btn {
+      border: 1px solid #cdd6e6;
+      background: #ffffff;
+      color: #365179;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .tab-btn:hover {
+      border-color: #98b5e5;
+      background: #f4f8ff;
+    }
+    .tab-btn.active {
+      background: #214d9b;
+      color: #fff;
+      border-color: #214d9b;
+      box-shadow: 0 8px 20px rgba(33, 77, 155, 0.18);
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    .section-title {
+      margin: 26px 0 12px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 10px;
+      border-bottom: 1px solid #e7ebf2;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .pill-danger { background: var(--danger-soft); color: var(--danger); }
+    .pill-warn { background: var(--warn-soft); color: var(--warn); }
+    .pill-ok { background: var(--ok-soft); color: var(--ok); }
+    .callout {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--brand-soft);
+      color: #123364;
+      border: 1px solid #cfe0ff;
+      font-size: 14px;
+    }
+    .danger-box, .warn-box, .ok-box {
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+    }
+    .danger-box {
+      background: var(--danger-soft);
+      border: 1px solid #f2c7c4;
+      color: #7a271a;
+    }
+    .warn-box {
+      background: var(--warn-soft);
+      border: 1px solid #f2d3b0;
+      color: #8a3b12;
+    }
+    .ok-box {
+      background: var(--ok-soft);
+      border: 1px solid #cbeedc;
+      color: #136643;
+    }
+    .list {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .list li { margin: 6px 0; }
+    .subtle {
+      color: var(--muted);
+    }
+    @media (max-width: 1100px) {
+      .top-metrics, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>FISHGOO 广告负责人看板 V3</h1>
+      <p>这版看板把“优化前问题、优化后日审计、当前操盘判断、学习成长”合并到一个入口。它的目标不是只记录心得，而是让你每天真正能判断账户该怎么调，以及你自己到底进步了多少。</p>
+      <div class="banner">当前正式判断：账户已经从危险状态收回来，但还停留在“品牌止血”层，没有进入“支付模型重建”层。</div>
+    </section>
+
+    <div class="top-metrics">
+      <div class="metric-card">
+        <div class="metric-label">当前阶段</div>
+        <div class="metric-value">止血</div>
+        <div class="metric-note">安全，但未进入重建</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">当前活跃 Campaign</div>
+        <div class="metric-value">1</div>
+        <div class="metric-note">仅品牌 Search</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Measurement 健康度</div>
+        <div class="metric-value">35 / 100</div>
+        <div class="metric-note">当前最大扣分项</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最近 4 个完整自然日 Spend</div>
+        <div class="metric-value">$7.43</div>
+        <div class="metric-note">3/26 ～ 3/29，极低预算消耗</div>
+      </div>
+    </div>
+
+    <div class="tabbar">
+      <button class="tab-btn active" data-tab="baseline">优化前基线</button>
+      <button class="tab-btn" data-tab="audit">调整后日审计</button>
+      <button class="tab-btn" data-tab="ops">当前驾驶舱</button>
+      <button class="tab-btn" data-tab="learning">学习成长</button>
+    </div>
+
+    <section class="tab-panel active" id="tab-baseline">
+      <h2 class="section-title">优化前基线</h2>
+      <div class="grid grid-4">
+        <div class="metric-card">
+          <div class="metric-label">历史总花费</div>
+          <div class="metric-value">$13,044.85</div>
+          <div class="metric-note">平台口径 campaign 总账</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">平台转化总数</div>
+          <div class="metric-value">729</div>
+          <div class="metric-note">平均平台 CPA $17.89</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">总注册用户</div>
+          <div class="metric-value">642</div>
+          <div class="metric-note">业务口径</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">注册 → 支付率</div>
+          <div class="metric-value">7.79%</div>
+          <div class="metric-note">历史漏斗偏弱</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>历史总账与漏斗</h3>
+          <table>
+            <tr><th>指标</th><th>数值</th><th>解读</th></tr>
+            <tr><td>总点击</td><td>33,742</td><td>量不小</td></tr>
+            <tr><td>总展示</td><td>828,101</td><td>覆盖充分</td></tr>
+            <tr><td>总下单用户</td><td>122</td><td>中间漏斗有流失</td></tr>
+            <tr><td>总支付用户</td><td>50</td><td>最终支付量有限</td></tr>
+            <tr><td>广告 ROI</td><td>1.22</td><td>账面勉强成立</td></tr>
+            <tr><td>渠道 ROI（含人力）</td><td>0.82</td><td>未形成稳定盈利</td></tr>
+          </table>
+          <div class="callout">这个 tab 的作用，是提醒你为什么当初必须改：不是没流量，而是“花得不够干净、学得不够对、经营结果不够好”。</div>
+        </div>
+        <div class="card">
+          <h3>调整前最大问题</h3>
+          <ul class="list">
+            <li>历史最有效资产是品牌 Search，不是竞对流量。</li>
+            <li>主力消耗高度集中在旧 PMax，且这些 PMax 容易吃品牌词。</li>
+            <li>调整前 live 状态更像“错误模型继续被放大”。</li>
+            <li>`Purchase` 没进入主学习体系，measurement 是最核心问题。</li>
+            <li>品牌与新增流量没有被严格拆开，导致读数容易失真。</li>
+          </ul>
+          <div class="warn-box" style="margin-top:12px;">如果没有这个基线，你后面每天看到的数据就没有参照系，也看不出自己到底有没有变强。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>历史主力 Campaign</h3>
+        <table>
+          <tr><th>Campaign</th><th>类型</th><th>花费</th><th>平台转化</th><th>平均 CPA</th></tr>
+          <tr><td>pmax- - reddit 1203 改 repfashion</td><td>PMax</td><td>$3,719.54</td><td>146.50</td><td>$25.39</td></tr>
+          <tr><td>pmax- - reddit +意向受众0123</td><td>PMax</td><td>$3,045.43</td><td>195.33</td><td>$15.59</td></tr>
+          <tr><td>search -品牌-0925</td><td>Search</td><td>$1,844.91</td><td>206.00</td><td>$8.96</td></tr>
+          <tr><td>pmax- - 竞对APP+意向受众 0123</td><td>PMax</td><td>$1,214.58</td><td>88.17</td><td>$13.78</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-audit">
+      <h2 class="section-title">调整后日审计</h2>
+      <div class="grid grid-4">
+        <div class="metric-card">
+          <div class="metric-label">调整后累计 Spend</div>
+          <div class="metric-value">$7.43</div>
+          <div class="metric-note">2026-03-26 ～ 2026-03-29</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">调整后累计点击</div>
+          <div class="metric-value">41</div>
+          <div class="metric-note">仍然极小量</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">调整后累计 Ads 转化</div>
+          <div class="metric-value">2</div>
+          <div class="metric-note">仍不能当真实支付</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">当前投手动作评级</div>
+          <div class="metric-value">4.2 / 10</div>
+          <div class="metric-note">合格止血，不是完整重建</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>每日审计台账</h3>
+        <table>
+          <tr><th>日期</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Ads Conv.</th><th>主要来源</th><th>Measurement</th><th>阶段判断</th></tr>
+          <tr><td>2026-03-26</td><td>$2.71</td><td>48</td><td>14</td><td>1</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>止血开始生效</td></tr>
+          <tr><td>2026-03-27</td><td>$1.25</td><td>42</td><td>7</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>风险收缩持续</td></tr>
+          <tr><td>2026-03-28</td><td>$2.72</td><td>53</td><td>15</td><td>1</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>仍属品牌收口</td></tr>
+          <tr><td>2026-03-29</td><td>$0.75</td><td>21</td><td>5</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>低量保守运行</td></tr>
+          <tr><td>2026-03-30 10:07</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>时间早，先不误判</td></tr>
+        </table>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>这轮调整后，真正发生了什么</h3>
+          <ul class="list">
+            <li>大部分高花费旧 PMax 已暂停。</li>
+            <li>账户退回品牌 Search 主导。</li>
+            <li>竞品结构不再是活跃主力。</li>
+            <li>账户进入保守状态。</li>
+          </ul>
+          <div class="ok-box" style="margin-top:12px;">这是一次有效的止血，不是一次无效的乱调。</div>
+        </div>
+        <div class="card">
+          <h3>这轮调整后，没有发生什么</h3>
+          <ul class="list">
+            <li>没有完成 measurement 修复。</li>
+            <li>没有完成结构重建。</li>
+            <li>没有完成真实支付导向的重新学习。</li>
+          </ul>
+          <div class="danger-box" style="margin-top:12px;">所以你现在看到的是“优化后日变化”，还不是“新模型已经成立”。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>这轮投手动作的市场水平评估</h3>
+        <table>
+          <tr><th>维度</th><th>分数</th><th>结论</th></tr>
+          <tr><td>风险控制能力</td><td>7 / 10</td><td>能及时止血</td></tr>
+          <tr><td>追踪与目标体系能力</td><td>2 / 10</td><td>没把 `Purchase` 扶正</td></tr>
+          <tr><td>账户重建能力</td><td>3 / 10</td><td>没完成新结构上线</td></tr>
+          <tr><td>本轮动作综合</td><td>4.2 / 10</td><td>合格止血，不是完整重建</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-ops">
+      <h2 class="section-title">当前驾驶舱</h2>
+      <div class="grid grid-4">
+        <div class="metric-card">
+          <div class="metric-label">今日 Spend（10:07）</div>
+          <div class="metric-value">$0.00</div>
+          <div class="metric-note">早上 0 花费不等于失效</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">最近 4 天展示</div>
+          <div class="metric-value">164</div>
+          <div class="metric-note">品牌流量绝对主导</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">最近 4 天点击</div>
+          <div class="metric-value">41</div>
+          <div class="metric-note">平均 CPC $0.18</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">当前活跃 Campaign</div>
+          <div class="metric-value">1</div>
+          <div class="metric-note">只剩品牌 Search</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>老板总览</h3>
+          <table>
+            <tr><th>项目</th><th>当前值</th><th>负责人解读</th></tr>
+            <tr><td>当前阶段</td><td>止血 / 保守运行</td><td>安全，但未进入重建</td></tr>
+            <tr><td>当前主要花费来源</td><td>Brand Search</td><td>不是拓新结构</td></tr>
+            <tr><td>当前能否验证真实支付 CPA</td><td><span class="pill pill-danger">否</span></td><td>`Purchase` 仍不是主学习目标</td></tr>
+            <tr><td>当前最重要任务</td><td>修 conversion hierarchy</td><td>先修 measurement，再谈效果</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Measurement 健康卡</h3>
+          <table>
+            <tr><th>检查项</th><th>状态</th></tr>
+            <tr><td>`Purchase` 是否是 Primary</td><td><span class="pill pill-danger">否</span></td></tr>
+            <tr><td>`Sign_up` 是否是 clean Secondary</td><td><span class="pill pill-danger">否</span></td></tr>
+            <tr><td>老的 `注册 (1)` 是否仍在主学习位</td><td><span class="pill pill-danger">是</span></td></tr>
+            <tr><td>Campaign goal 是否按 `Purchase` 学</td><td><span class="pill pill-danger">否</span></td></tr>
+            <tr><td>是否具备 `purchase value` 回传</td><td><span class="pill pill-ok">是</span></td></tr>
+            <tr><td>是否已有 `Place Order`</td><td><span class="pill pill-warn">未确认</span></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>当前结构 vs 目标结构</h3>
+        <table>
+          <tr><th>层级</th><th>当前真实状态</th><th>判断</th></tr>
+          <tr><td>Brand Search</td><td>已保留，且是唯一活跃系列</td><td><span class="pill pill-ok">方向对，但过于单一</span></td></tr>
+          <tr><td>Non-brand Search</td><td>未上线</td><td><span class="pill pill-danger">缺失</span></td></tr>
+          <tr><td>PMax Prospecting</td><td>旧 PMax 全暂停</td><td><span class="pill pill-warn">止血正确，重建未开始</span></td></tr>
+          <tr><td>Remarketing</td><td>未见正式独立系列</td><td><span class="pill pill-danger">缺失</span></td></tr>
+        </table>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>当前最重要的 5 个风险</h3>
+          <ul class="list">
+            <li>`Purchase` 未进入主学习体系。</li>
+            <li>老的 `注册 (1)` 仍在主学习位。</li>
+            <li>Campaign goals 仍按 `SIGNUP` 学。</li>
+            <li>当前只有品牌流量，无法验证拓新模型。</li>
+            <li>旧竞品词仍留在旧结构里，未来误启用会重新带来风险。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>今天怎么调</h3>
+          <div class="ok-box">
+            <strong>今天应该做</strong>
+            <ul class="list">
+              <li>确认 `Purchase / Sign_up / 注册 (1)` 的主学习关系。</li>
+              <li>明确冷启动未来准备用 `Place Order`、`First Purchase` 还是 `Sign_up`。</li>
+              <li>继续保持旧 PMax、竞品 Search、Demand Gen 暂停。</li>
+            </ul>
+          </div>
+          <div class="danger-box" style="margin-top:12px;">
+            <strong>今天不该做</strong>
+            <ul class="list">
+              <li>不要因为量小就重新打开旧 PMax。</li>
+              <li>不要把 0 花费或 0 转化解读成投放失效。</li>
+              <li>不要在 measurement 没修好前宣布开始验证支付模型。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-learning">
+      <h2 class="section-title">学习成长</h2>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>这次项目真正要练的 4 个基本功</h3>
+          <ol class="list">
+            <li>看 campaign 状态、预算和类型。</li>
+            <li>看 conversion goal 到底指向什么。</li>
+            <li>看关键词是品牌、竞品还是泛词。</li>
+            <li>看每天的数据到底能说明什么、不能说明什么。</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>当前最重要的学习点</h3>
+          <ul class="list">
+            <li>看板不能只写心得，必须先写基础数据。</li>
+            <li>日常操盘先看 measurement，再看花费，再看转化。</li>
+            <li>品牌稳定不等于拓新模型成立。</li>
+            <li>早上看到 0 花费，不等于广告停了。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>还需要补的负责人指标</h3>
+        <table>
+          <tr><th>指标组</th><th>建议补充</th><th>为什么重要</th></tr>
+          <tr><td>花费节奏</td><td>今日 Spend、昨日 Spend、最近 7 天 Spend、调整后累计 Spend、理论日预算上限、预算执行率</td><td>判断是花不出去还是控得太死</td></tr>
+          <tr><td>流量质量</td><td>CTR、CPC、品牌词占比、竞品词占比、脏词占比、Top Search Terms</td><td>判断钱买来的是什么流量</td></tr>
+          <tr><td>转化链路</td><td>Sign-ups、Order Users、First Purchase Users、Purchase Transactions、Purchase Value、Sign-up CPA、First Purchase CAC、Purchase CAC</td><td>Fishgoo 是长链路业务，不能只看 Ads 转化</td></tr>
+          <tr><td>结构健康</td><td>活跃 campaign 数、Brand/Non-brand/PMax/Remarketing 是否齐全、legacy conversion、Campaign goal 对齐度</td><td>决定今天能不能调、该不该调</td></tr>
+        </table>
+      </div>
+
+      <div class="grid grid-3">
+        <div class="card">
+          <h3>今天的数据能说明什么</h3>
+          <ul class="list">
+            <li>账户目前处在低风险状态。</li>
+            <li>旧高风险系列没有继续消耗。</li>
+            <li>当前投放结构仍高度保守。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>今天的数据不能说明什么</h3>
+          <ul class="list">
+            <li>不能说明真实支付成本改善了。</li>
+            <li>不能说明购买模型已经跑通。</li>
+            <li>不能说明这轮重建已经成功。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>你每天要问自己的 5 个问题</h3>
+          <ol class="list">
+            <li>今天花了多少钱？</li>
+            <li>钱主要花在哪些 campaign？</li>
+            <li>系统现在到底在学什么？</li>
+            <li>今天有没有异常？</li>
+            <li>今天到底该怎么调？</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const buttons = document.querySelectorAll('.tab-btn');
+    const panels = {
+      baseline: document.getElementById('tab-baseline'),
+      audit: document.getElementById('tab-audit'),
+      ops: document.getElementById('tab-ops'),
+      learning: document.getElementById('tab-learning'),
+    };
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.tab;
+        buttons.forEach((b) => b.classList.toggle('active', b === button));
+        Object.entries(panels).forEach(([panelKey, panel]) => {
+          panel.classList.toggle('active', panelKey === key);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
