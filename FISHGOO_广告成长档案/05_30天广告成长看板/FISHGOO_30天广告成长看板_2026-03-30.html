@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FISHGOO 30 天广告成长看板</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --panel: #fffdf8;
+      --line: #ddd4c5;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --green: #2f7d4a;
+      --amber: #c48918;
+      --red: #b64b4b;
+      --blue: #275dad;
+      --shadow: 0 10px 24px rgba(31, 41, 55, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #f7f3ea 0%, #f5f7fb 100%);
+      color: var(--text);
+      font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    .hero, .panel, .lane, .table-wrap {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: var(--blue);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 14px 0 10px;
+      font-size: 34px;
+      line-height: 1.2;
+    }
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      max-width: 920px;
+      font-size: 16px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .stat {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .stat .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stat .value {
+      font-size: 28px;
+      font-weight: 800;
+      margin-top: 8px;
+    }
+    .stat .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .panel {
+      padding: 24px;
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+    .muted { color: var(--muted); }
+    .bullets {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .bullets li { margin: 6px 0; }
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .lane {
+      padding: 18px;
+    }
+    .lane h3 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+    .card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      margin-bottom: 12px;
+    }
+    .card strong { display: block; margin-bottom: 4px; }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    .tag.done { background: #e9f7ee; color: var(--green); }
+    .tag.watch { background: #fff4da; color: var(--amber); }
+    .tag.risk { background: #fde8e8; color: var(--red); }
+    .tag.next { background: #eaf1ff; color: var(--blue); }
+    .table-wrap {
+      overflow: auto;
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1180px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee6d9;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #faf5ea;
+      z-index: 1;
+      font-size: 13px;
+    }
+    .score {
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .score.good { color: var(--green); }
+    .score.mid { color: var(--amber); }
+    .score.low { color: var(--red); }
+    .footnote {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 1100px) {
+      .stats, .kanban, .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <span class="eyebrow">Fishgoo Growth Board</span>
+      <h1>FISHGOO 30 天广告成长看板</h1>
+      <p class="lead">
+        这是一张把广告审计、学习心得、目标达成率和下一步动作放到同一块面板里的训练看板。
+        它的目标不是让你“看很多数据”，而是让你每天知道：今天发生了什么、能说明什么、下一步该怎么学。
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">当前阶段</div>
+          <div class="value">风险收缩</div>
+          <div class="sub">还没进入真实支付模型验证</div>
+        </div>
+        <div class="stat">
+          <div class="label">已审计天数</div>
+          <div class="value">4 / 30</div>
+          <div class="sub">Day 1、2、4、5 已落档</div>
+        </div>
+        <div class="stat">
+          <div class="label">平均达成率</div>
+          <div class="value">51.75%</div>
+          <div class="sub">说明方向不是全错，但离重建还远</div>
+        </div>
+        <div class="stat">
+          <div class="label">最大阻塞</div>
+          <div class="value">Measurement</div>
+          <div class="sub">Purchase 未扶正，campaign 仍按 SIGNUP 学</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>当前总判断</h2>
+        <ul class="bullets">
+          <li>旧 PMax、竞品 Search、Demand Gen 的持续花费已经被压住。</li>
+          <li>品牌 Search 仍然是唯一稳定活跃的系列，流量高度集中在品牌词。</li>
+          <li>`Purchase` 仍然不是主学习目标，`SIGNUP` 仍在主学习位。</li>
+          <li>到 2026-03-30 为止，这轮动作本质上仍是“止血”，不是“重建”。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>目标达成率口径</h2>
+        <p class="muted">
+          目标达成率 = 当日已达标检查项 / 当日总检查项。它反映的是“这轮调整有没有朝正确方向推进”，不是最终 ROI。
+        </p>
+        <ul class="bullets">
+          <li>Day 1：4/7 = 57%</li>
+          <li>Day 2：4/7 = 57%</li>
+          <li>Day 4：4/8 = 50%</li>
+          <li>Day 5：3/7 = 43%</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="kanban">
+      <div class="lane">
+        <h3>已完成审计</h3>
+        <div class="card">
+          <strong>Day 1 · 2026-03-26</strong>
+          止血开始生效，但 payment learning 没启动。
+          <div class="tag done">57%</div>
+        </div>
+        <div class="card">
+          <strong>Day 2 · 2026-03-27</strong>
+          风险收缩持续，结构稳定，但仍按注册目标学习。
+          <div class="tag done">57%</div>
+        </div>
+        <div class="card">
+          <strong>Day 4 · 2026-03-29</strong>
+          账户已足够安全，但还不够正确。
+          <div class="tag done">50%</div>
+        </div>
+        <div class="card">
+          <strong>Day 5 · 2026-03-30</strong>
+          上午 10 点前 0 花费，不等于广告失效。
+          <div class="tag done">43%</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h3>待补与待审</h3>
+        <div class="card">
+          <strong>Day 3 · 2026-03-28</strong>
+          需要补审计，重点应该是花费结构而不是支付结果。
+          <div class="tag watch">待补</div>
+        </div>
+        <div class="card">
+          <strong>Day 6 · 2026-03-31</strong>
+          继续看账户是否还停留在单品牌保守模式。
+          <div class="tag watch">待观察</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h3>关键里程碑</h3>
+        <div class="card">
+          <strong>Day 7 · 2026-04-01</strong>
+          第一个方向判断点：看 measurement、品牌 CPA、搜索词质量。
+          <div class="tag next">关键节点</div>
+        </div>
+        <div class="card">
+          <strong>Day 14 · 2026-04-08</strong>
+          第一轮阶段判断：到底还是止血，还是开始进入验证。
+          <div class="tag next">关键节点</div>
+        </div>
+        <div class="card">
+          <strong>Day 21 · 2026-04-15</strong>
+          开始更认真看支付趋势。
+          <div class="tag next">关键节点</div>
+        </div>
+        <div class="card">
+          <strong>Day 30 · 2026-04-24</strong>
+          必须回答真实支付 CPA 是否改善。
+          <div class="tag next">最终节点</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h3>当前阻塞</h3>
+        <div class="card">
+          <strong>Measurement 未修</strong>
+          `Purchase` 不是 Primary，campaign 仍按 `SIGNUP` 学。
+          <div class="tag risk">P0 风险</div>
+        </div>
+        <div class="card">
+          <strong>新结构未上线</strong>
+          仍未看到 Brand / Non-brand / Remarketing 三层新结构。
+          <div class="tag risk">P1 风险</div>
+        </div>
+        <div class="card">
+          <strong>旧竞品词仍留在结构里</strong>
+          现在不花钱，但未来被误开仍有风险。
+          <div class="tag risk">P2 风险</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>日期</th>
+            <th>观察主题</th>
+            <th>审计结论</th>
+            <th>学习心得</th>
+            <th>目标达成率</th>
+            <th>状态</th>
+            <th>下一步</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Day 1</td><td>2026-03-26</td><td>看设置与结构收口</td><td>旧 PMax 已停，品牌 Search 成唯一主活跃流量，但 measurement 未修。</td><td>止血成功不等于支付优化启动。</td><td class="score good">57%</td><td>已审计</td><td>继续看花费是否收口。</td>
+          </tr>
+          <tr>
+            <td>Day 2</td><td>2026-03-27</td><td>看风险收缩是否持续</td><td>结构继续稳定，流量仍干净，但仍按注册目标学习。</td><td>小体量下，单日 0 转化不能直接推翻方向。</td><td class="score good">57%</td><td>已审计</td><td>继续看结构是否保持。</td>
+          </tr>
+          <tr>
+            <td>Day 3</td><td>2026-03-28</td><td>看花费结构</td><td>待补审计。</td><td>先看钱怎么花，不急着看支付。</td><td class="score mid">待审</td><td>待补</td><td>补审计，重点看花费来源。</td>
+          </tr>
+          <tr>
+            <td>Day 4</td><td>2026-03-29</td><td>看是否进入正确优化模式</td><td>账户已安全，但仍未从保守模式切到正确模式。</td><td>止血成功，不等于模型重建成功。</td><td class="score mid">50%</td><td>已审计</td><td>明确要求修 measurement。</td>
+          </tr>
+          <tr>
+            <td>Day 5</td><td>2026-03-30</td><td>看保守状态是否延续</td><td>上午 10:07 截止 0 花费，不代表失效；仍只有品牌 Search 启用，目标仍错。</td><td>早上看到账户 0 花费，不等于广告停了。</td><td class="score low">43%</td><td>已审计</td><td>先修目标，再谈效果。</td>
+          </tr>
+          <tr><td>Day 6</td><td>2026-03-31</td><td>观察延续性</td><td>待审计。</td><td>关注账户是否还停留在单品牌模式。</td><td class="score mid">待审</td><td>待观察</td><td>看是否出现新结构或新流量。</td></tr>
+          <tr><td>Day 7</td><td>2026-04-01</td><td>看早期方向</td><td>待审计。</td><td>Day 7 重点看方向，不看最终答案。</td><td class="score mid">待审</td><td>关键节点</td><td>检查品牌 CPA、搜索词、measurement。</td></tr>
+          <tr><td>Day 8</td><td>2026-04-02</td><td>看结构是否被重新打开</td><td>待审计。</td><td>先看有没有错误动作回滚。</td><td class="score mid">待审</td><td>待观察</td><td>继续比对 campaign 状态。</td></tr>
+          <tr><td>Day 9</td><td>2026-04-03</td><td>看流量质量</td><td>待审计。</td><td>流量更干净，往往比表面转化更重要。</td><td class="score mid">待审</td><td>待观察</td><td>搜索词与关键词复核。</td></tr>
+          <tr><td>Day 10</td><td>2026-04-04</td><td>看投手是否进入重建动作</td><td>待审计。</td><td>没有新结构，就还是止血。</td><td class="score mid">待审</td><td>待观察</td><td>看是否上线新 campaign。</td></tr>
+          <tr><td>Day 11</td><td>2026-04-05</td><td>看 measurement 是否变化</td><td>待审计。</td><td>所有效果判断都建立在目标正确上。</td><td class="score mid">待审</td><td>待观察</td><td>复核 conversion goals。</td></tr>
+          <tr><td>Day 12</td><td>2026-04-06</td><td>看预算是否与计划对齐</td><td>待审计。</td><td>预算小的时候，结构比量更重要。</td><td class="score mid">待审</td><td>待观察</td><td>看预算与活跃系列。</td></tr>
+          <tr><td>Day 13</td><td>2026-04-07</td><td>看阶段稳定性</td><td>待审计。</td><td>稳定比偶然波动更有意义。</td><td class="score mid">待审</td><td>待观察</td><td>准备 Day 14 阶段判断。</td></tr>
+          <tr><td>Day 14</td><td>2026-04-08</td><td>第一轮阶段判断</td><td>待审计。</td><td>到 Day 14，应该能判断是不是还停留在止血层。</td><td class="score mid">待审</td><td>关键节点</td><td>看花费、注册质量、支付趋势。</td></tr>
+          <tr><td>Day 15</td><td>2026-04-09</td><td>看是否进入新结构验证</td><td>待审计。</td><td>有结构变化，才有资格谈模型变化。</td><td class="score mid">待审</td><td>待观察</td><td>核查新 campaign 与新页。</td></tr>
+          <tr><td>Day 16</td><td>2026-04-10</td><td>看目标与页面是否匹配</td><td>待审计。</td><td>目标深，页面也要更深。</td><td class="score mid">待审</td><td>待观察</td><td>检查 landing page 承接。</td></tr>
+          <tr><td>Day 17</td><td>2026-04-11</td><td>看冷启动与品牌是否分层</td><td>待审计。</td><td>Brand 与 cold 不能长期混用同一目标。</td><td class="score mid">待审</td><td>待观察</td><td>检查 goal 分层。</td></tr>
+          <tr><td>Day 18</td><td>2026-04-12</td><td>看是否有 place_order / first_purchase 信号</td><td>待审计。</td><td>中间目标常常比注册更有价值。</td><td class="score mid">待审</td><td>待观察</td><td>与技术确认埋点。</td></tr>
+          <tr><td>Day 19</td><td>2026-04-13</td><td>看注册到下单链路</td><td>待审计。</td><td>冷流量质量不能只看注册数。</td><td class="score mid">待审</td><td>待观察</td><td>对账内部链路数据。</td></tr>
+          <tr><td>Day 20</td><td>2026-04-14</td><td>看下单到支付链路</td><td>待审计。</td><td>支付流失重时，广告只是问题的一半。</td><td class="score mid">待审</td><td>待观察</td><td>检查新客支付成功率。</td></tr>
+          <tr><td>Day 21</td><td>2026-04-15</td><td>看支付趋势</td><td>待审计。</td><td>到 Day 21 才开始更认真看支付。</td><td class="score mid">待审</td><td>关键节点</td><td>看真实支付趋势与 CAC。</td></tr>
+          <tr><td>Day 22</td><td>2026-04-16</td><td>看新客与老客混合问题</td><td>待审计。</td><td>所有 purchase 不等于 first purchase。</td><td class="score mid">待审</td><td>待观察</td><td>区分新客与老客贡献。</td></tr>
+          <tr><td>Day 23</td><td>2026-04-17</td><td>看是否被老客重复购买污染</td><td>待审计。</td><td>拉新目标要防止被老客信号带偏。</td><td class="score mid">待审</td><td>待观察</td><td>核查 first purchase 能力。</td></tr>
+          <tr><td>Day 24</td><td>2026-04-18</td><td>看 remarketing 是否该独立</td><td>待审计。</td><td>再营销更适合直接看 purchase。</td><td class="score mid">待审</td><td>待观察</td><td>检查 warm audience 逻辑。</td></tr>
+          <tr><td>Day 25</td><td>2026-04-19</td><td>看 non-brand 是否该用 place_order</td><td>待审计。</td><td>长链路业务通常需要中间目标。</td><td class="score mid">待审</td><td>待观察</td><td>复核 cold campaign 目标。</td></tr>
+          <tr><td>Day 26</td><td>2026-04-20</td><td>看站内承接是否拖后腿</td><td>待审计。</td><td>广告不一定是最大的漏斗问题。</td><td class="score mid">待审</td><td>待观察</td><td>对照 landing page 数据。</td></tr>
+          <tr><td>Day 27</td><td>2026-04-21</td><td>看是否有足够证据做月度判断</td><td>待审计。</td><td>没有真实支付结果，就不要轻易给老板下结论。</td><td class="score mid">待审</td><td>待观察</td><td>整理月度数据口径。</td></tr>
+          <tr><td>Day 28</td><td>2026-04-22</td><td>看支付模型是否开始成型</td><td>待审计。</td><td>真正的模型要能解释，不只是好看。</td><td class="score mid">待审</td><td>待观察</td><td>看支付与注册的关系。</td></tr>
+          <tr><td>Day 29</td><td>2026-04-23</td><td>准备最终评估</td><td>待审计。</td><td>最终结论要基于真实业务结果，不是平台表象。</td><td class="score mid">待审</td><td>待观察</td><td>汇总 30 天数据。</td></tr>
+          <tr><td>Day 30</td><td>2026-04-24</td><td>最终答案</td><td>待审计。</td><td>到 Day 30，要能回答真实支付 CPA 到底变了没有。</td><td class="score mid">待审</td><td>最终节点</td><td>输出月度结论与下一步。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="footnote">
+      当前一句话状态：账户已经从危险状态收回来，但还没有进入正确的支付模型验证阶段。
+    </p>
+  </div>
+</body>
+</html>
