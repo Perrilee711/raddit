@@ -343,29 +343,29 @@
     <section class="hero">
       <h1>FISHGOO 广告负责人看板 V3</h1>
       <p>这版看板把“优化前问题、优化后日审计、当前操盘判断、学习成长”合并到一个入口。它的目标不是只记录心得，而是让你每天真正能判断账户该怎么调，以及你自己到底进步了多少。</p>
-      <div class="banner">当前正式判断：最近一次成功 live 数据停在 2026-04-02。2026-04-03 起 Google Ads MCP OAuth 失效，先恢复观测链路，再继续判断账户效果。</div>
+      <div class="banner">当前正式判断：2026-04-03 ～ 2026-04-07 已完成补审。最近 5 天继续显示账户只有品牌 Search 在低量保守运行，measurement 仍未修好。</div>
     </section>
 
     <div class="top-metrics">
       <div class="metric-card">
         <div class="metric-label">当前阶段</div>
-        <div class="metric-value">阻塞</div>
-        <div class="metric-note">先恢复 Google Ads MCP 认证</div>
+        <div class="metric-value">保守运行</div>
+        <div class="metric-note">品牌单系列低量承接</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">最近一次成功 live</div>
-        <div class="metric-value">2026-04-02</div>
-        <div class="metric-note">最新可靠读数停在这天</div>
+        <div class="metric-value">2026-04-07</div>
+        <div class="metric-note">最新可靠读数已恢复到今天</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Google Ads MCP 认证</div>
-        <div class="metric-value">已失效</div>
-        <div class="metric-note">invalid_grant / token revoked</div>
+        <div class="metric-value">已恢复</div>
+        <div class="metric-note">Google Ads MCP 认证已恢复</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">待补审日期</div>
-        <div class="metric-value">5 天</div>
-        <div class="metric-note">2026-04-03 ～ 2026-04-07</div>
+        <div class="metric-value">0 天</div>
+        <div class="metric-note">2026-04-03 ～ 2026-04-07 已补审</div>
       </div>
     </div>
 
@@ -622,8 +622,8 @@
 
       <div class="card">
         <h3>每日审计台账</h3>
-        <div class="danger-box" style="margin-bottom:12px;">
-          <strong>当前阻塞：</strong> 2026-04-03 起 Google Ads MCP OAuth token 失效，Day 9 - Day 13 无法正常读取 live 数据。以下 5 条记录是阻塞记录，不是广告效果结论。
+        <div class="ok-box" style="margin-bottom:12px;">
+          <strong>补审完成：</strong> 2026-04-03 ～ 2026-04-07 的 live 数据已通过重新授权后的 Google Ads MCP 回拉完成。结果显示这 5 天依然只有 Brand Search 在低量运行，不再视为阻塞期。
         </div>
         <table>
           <tr><th>日期</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Ads Conv.</th><th>主要来源</th><th>Measurement</th><th>阶段判断</th></tr>
@@ -635,11 +635,11 @@
           <tr><td>2026-03-31 09:49</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>结构稳定，预算未起量</td></tr>
           <tr><td>2026-04-01 10:05</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>第一周复盘：止血有效，重建未开始</td></tr>
           <tr><td>2026-04-02 14:14</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>结构识别：只有 Brand 活着</td></tr>
-          <tr><td>2026-04-03 10:55</td><td>-</td><td>-</td><td>-</td><td>-</td><td>读取失败</td><td><span class="pill pill-warn">阻塞</span></td><td>补审失败：Google Ads token 失效</td></tr>
-          <tr><td>2026-04-04 10:55</td><td>-</td><td>-</td><td>-</td><td>-</td><td>读取失败</td><td><span class="pill pill-warn">阻塞</span></td><td>补审失败：Google Ads token 失效</td></tr>
-          <tr><td>2026-04-05 10:55</td><td>-</td><td>-</td><td>-</td><td>-</td><td>读取失败</td><td><span class="pill pill-warn">阻塞</span></td><td>补审失败：Google Ads token 失效</td></tr>
-          <tr><td>2026-04-06 10:55</td><td>-</td><td>-</td><td>-</td><td>-</td><td>读取失败</td><td><span class="pill pill-warn">阻塞</span></td><td>补审失败：Google Ads token 失效</td></tr>
-          <tr><td>2026-04-07 10:55</td><td>-</td><td>-</td><td>-</td><td>-</td><td>读取失败</td><td><span class="pill pill-warn">阻塞</span></td><td>今日审计失败：Google Ads token 失效</td></tr>
+          <tr><td>2026-04-03</td><td>$0.88</td><td>19</td><td>4</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：品牌词低量承接</td></tr>
+          <tr><td>2026-04-04</td><td>$0.00</td><td>7</td><td>0</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：品牌曝光但未起量</td></tr>
+          <tr><td>2026-04-05</td><td>$0.82</td><td>14</td><td>5</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：点击回升但目标未修</td></tr>
+          <tr><td>2026-04-06</td><td>$0.82</td><td>25</td><td>5</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：结构仍未推进</td></tr>
+          <tr><td>2026-04-07 11:43</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>live 已恢复：measurement 仍未修</td></tr>
         </table>
       </div>
 
@@ -651,9 +651,9 @@
             <li>账户退回品牌 Search 主导。</li>
             <li>竞品结构不再是活跃主力。</li>
             <li>账户进入保守状态。</li>
-            <li>2026-04-03 起，Google Ads MCP OAuth 过期，观测链路中断。</li>
+            <li>2026-04-03 ～ 2026-04-07 已完成补审，且都显示只有品牌 Search 在低量运行。</li>
           </ul>
-          <div class="ok-box" style="margin-top:12px;">前半程看起来是一次有效止血；后半程因为观测链路断了，暂时不能继续更新效果判断。</div>
+          <div class="ok-box" style="margin-top:12px;">这轮动作到目前为止依然是有效止血，但补审结果也再次证明：账户还没有进入结构化重建阶段。</div>
         </div>
         <div class="card">
           <h3>这轮调整后，没有发生什么</h3>
@@ -683,23 +683,23 @@
       <div class="grid grid-4">
         <div class="metric-card">
           <div class="metric-label">当前 live 状态</div>
-          <div class="metric-value">阻塞</div>
-          <div class="metric-note">Google Ads MCP token 已失效</div>
+          <div class="metric-value">已恢复</div>
+          <div class="metric-note">live 观测链路已恢复</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">最近一次成功 live</div>
-          <div class="metric-value">2026-04-02</div>
-          <div class="metric-note">最新可靠读数停在这天</div>
+          <div class="metric-value">2026-04-07</div>
+          <div class="metric-note">最新可靠读数已恢复到今天</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">待补审日期</div>
-          <div class="metric-value">5</div>
-          <div class="metric-note">Day 9 - Day 13</div>
+          <div class="metric-value">0</div>
+          <div class="metric-note">Day 9 - Day 13 已补审</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">当前最重要任务</div>
-          <div class="metric-value">重授权</div>
-          <div class="metric-note">先恢复 Google Ads MCP 认证</div>
+          <div class="metric-value">修目标</div>
+          <div class="metric-note">先修 Purchase / Sign_up / 注册(1)</div>
         </div>
       </div>
 
@@ -708,14 +708,14 @@
           <h3>老板总览</h3>
           <table>
             <tr><th>项目</th><th>当前值</th><th>负责人解读</th></tr>
-            <tr><td>当前阶段</td><td>观测阻塞 / 待重新授权</td><td>先恢复读数能力</td></tr>
-            <tr><td>最近一次成功 live 数据</td><td>2026-04-02 14:14</td><td>当前 dashboard 最新可靠读数停在这天</td></tr>
-            <tr><td>当前能否继续日审</td><td><span class="pill pill-danger">否</span></td><td>Google Ads MCP token 已过期</td></tr>
-            <tr><td>当前最重要任务</td><td>恢复 Google Ads MCP 认证</td><td>重新授权后再补 Day 9 - Day 13</td></tr>
+            <tr><td>当前阶段</td><td>品牌单系列低量保守运行</td><td>账户安全，但还不是增长结构</td></tr>
+            <tr><td>最近一次成功 live 数据</td><td>2026-04-07 11:43</td><td>当前 dashboard 最新可靠读数已恢复到今天</td></tr>
+            <tr><td>当前能否继续日审</td><td><span class="pill pill-ok">是</span></td><td>Google Ads MCP 认证已恢复</td></tr>
+            <tr><td>当前最重要任务</td><td>修正目标体系</td><td>先处理 Purchase / Sign_up / 注册 (1)</td></tr>
           </table>
         </div>
         <div class="card">
-          <h3>最近一次成功 live 读取的 Measurement 健康卡（截至 2026-04-02）</h3>
+          <h3>最近一次成功 live 读取的 Measurement 健康卡（截至 2026-04-07）</h3>
           <table>
             <tr><th>检查项</th><th>状态</th></tr>
             <tr><td>`Purchase` 是否是 Primary</td><td><span class="pill pill-danger">否</span></td></tr>
@@ -724,7 +724,7 @@
             <tr><td>Campaign goal 是否按 `Purchase` 学</td><td><span class="pill pill-danger">否</span></td></tr>
             <tr><td>是否具备 `purchase value` 回传</td><td><span class="pill pill-ok">是</span></td></tr>
             <tr><td>是否已有 `Place Order`</td><td><span class="pill pill-warn">未确认</span></td></tr>
-            <tr><td>Google Ads MCP 当前认证状态</td><td><span class="pill pill-danger">已失效</span></td></tr>
+            <tr><td>Google Ads MCP 当前认证状态</td><td><span class="pill pill-ok">已恢复</span></td></tr>
           </table>
         </div>
       </div>
@@ -733,10 +733,10 @@
         <h3>当前结构 vs 目标结构</h3>
         <table>
           <tr><th>层级</th><th>当前真实状态</th><th>判断</th></tr>
-          <tr><td>Brand Search</td><td>截至 2026-04-02：已保留，且是唯一活跃系列</td><td><span class="pill pill-ok">最近一次成功结论</span></td></tr>
-          <tr><td>Non-brand Search</td><td>截至 2026-04-02：未上线</td><td><span class="pill pill-danger">最近一次成功结论</span></td></tr>
-          <tr><td>PMax Prospecting</td><td>截至 2026-04-02：旧 PMax 全暂停</td><td><span class="pill pill-warn">最近一次成功结论</span></td></tr>
-          <tr><td>Remarketing</td><td>截至 2026-04-02：未见正式独立系列</td><td><span class="pill pill-danger">最近一次成功结论</span></td></tr>
+          <tr><td>Brand Search</td><td>截至 2026-04-07：已保留，且仍是唯一活跃系列</td><td><span class="pill pill-ok">最新 live 结论</span></td></tr>
+          <tr><td>Non-brand Search</td><td>截至 2026-04-07：未上线</td><td><span class="pill pill-danger">最新 live 结论</span></td></tr>
+          <tr><td>PMax Prospecting</td><td>截至 2026-04-07：旧 PMax 全暂停</td><td><span class="pill pill-warn">最新 live 结论</span></td></tr>
+          <tr><td>Remarketing</td><td>截至 2026-04-07：未见正式独立系列</td><td><span class="pill pill-danger">最新 live 结论</span></td></tr>
         </table>
       </div>
 
@@ -756,17 +756,17 @@
           <div class="ok-box">
             <strong>今天应该做</strong>
             <ul class="list">
-              <li>立刻完成 Google Ads MCP 重新授权。</li>
-              <li>重新授权后补拉 2026-04-03 ～ 2026-04-07 的 account / campaign / search term / conversion goal。</li>
-              <li>在补审完成前，暂停新增效果判断和结构结论。</li>
+              <li>立刻核清 Purchase / Sign_up / 注册 (1) 的主学习关系。</li>
+              <li>决定冷启动未来到底学 Place Order、First Purchase 还是 Sign_up。</li>
+              <li>在目标体系没修好前，继续保持旧 PMax / 竞品 Search / Demand Gen 暂停。</li>
             </ul>
           </div>
           <div class="danger-box" style="margin-top:12px;">
             <strong>今天不该做</strong>
             <ul class="list">
-              <li>不要把“今天拉不到数据”误判成“广告一定没跑”。</li>
-              <li>不要用 2026-04-02 之后的结果继续冒充 live 审计。</li>
-              <li>不要在认证恢复前追加新的账户效果结论。</li>
+              <li>不要把品牌词还在花钱误判成“新模型已经恢复”。</li>
+              <li>不要在 Purchase 未扶正前重开旧拓新结构。</li>
+              <li>不要把这几天的 0 转化直接解读成“支付模型失败”。</li>
             </ul>
           </div>
         </div>
@@ -778,8 +778,8 @@
       <div class="grid grid-3">
         <div class="metric-card">
           <div class="metric-label">当前学习阶段</div>
-          <div class="metric-value">Day 8</div>
-          <div class="metric-note">已进入“结构识别”阶段</div>
+          <div class="metric-value">Day 13</div>
+          <div class="metric-note">已进入“补审后判断”阶段</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">本轮训练主轴</div>
@@ -827,11 +827,11 @@
       <div class="card" style="margin-top:16px;">
         <h3>下一步建议</h3>
         <ol class="list">
-          <li>先恢复 Google Ads MCP 认证，否则 Day 9 - Day 13 没法补审。</li>
-          <li>认证恢复后，第一件事是回拉 2026-04-03 ～ 2026-04-07 的原始日审数据。</li>
-          <li>补审完成后，再继续核 <code>Purchase / Sign_up / 注册 (1)</code> 的主学习关系。</li>
-          <li>在没有新证据前，继续沿用截至 2026-04-02 的最近一次成功结论。</li>
-          <li>Day 14 阶段判断顺延到补审完成之后。</li>
+          <li>先修 <code>Purchase / Sign_up / 注册 (1)</code> 的主学习关系。</li>
+          <li>再决定冷启动到底学 <code>Place Order</code>、<code>First Purchase</code> 还是 <code>Sign_up</code>。</li>
+          <li>在目标体系没修好前，继续沿用“品牌保守承接”结论。</li>
+          <li>Day 14 阶段判断以补审后的连续证据来下。</li>
+          <li>这 5 天补审要当成新的阶段证据，不再视为阻塞期。</li>
         </ol>
       </div>
 
@@ -879,29 +879,29 @@
             <div class="timeline-note">你今天开始练的是：先拆 Brand / Non-brand / PMax / Remarketing，再判断账户处于什么阶段。结论：当前只有 Brand 这一层还活着，这说明账户安全了，但完整增长结构还没建起来。</div>
           </div>
           <div class="timeline-item">
-            <div class="timeline-head"><span class="timeline-day">Day 9</span><span class="timeline-date">2026-04-03</span><span class="pill pill-danger">受阻</span></div>
+            <div class="timeline-head"><span class="timeline-day">Day 9</span><span class="timeline-date">2026-04-03</span><span class="pill pill-ok">已补审</span></div>
             <div class="timeline-focus">主题：品牌词与竞品词</div>
-            <div class="timeline-note">原计划学习品牌词与竞品词，但补审被 Google Ads token 失效阻塞。今天真正学到的是：没有 live 数据时，不能假装自己知道词在怎么花钱。</div>
+            <div class="timeline-note">补审显示只有 <code>fishgoo</code> 品牌词在花钱，没有竞品词活跃。今天真正学到的是：账户还在纯品牌承接阶段，不要把“没有竞品词消耗”误读成“拓新已经干净完成”。</div>
           </div>
           <div class="timeline-item">
-            <div class="timeline-head"><span class="timeline-day">Day 10</span><span class="timeline-date">2026-04-04</span><span class="pill pill-danger">受阻</span></div>
+            <div class="timeline-head"><span class="timeline-day">Day 10</span><span class="timeline-date">2026-04-04</span><span class="pill pill-ok">已补审</span></div>
             <div class="timeline-focus">主题：搜索词质量与否词思路</div>
-            <div class="timeline-note">原计划看搜索词质量，但搜索词报告无法读取。这一天的学习重点改成：没搜索词报告，就不要给出新的否词建议。</div>
+            <div class="timeline-note">补审显示只有品牌词曝光、没有点击、也没有脏词。今天学到的是：没有垃圾词时，不要为了“看起来在优化”而乱加否词。</div>
           </div>
           <div class="timeline-item">
-            <div class="timeline-head"><span class="timeline-day">Day 11</span><span class="timeline-date">2026-04-05</span><span class="pill pill-danger">受阻</span></div>
+            <div class="timeline-head"><span class="timeline-day">Day 11</span><span class="timeline-date">2026-04-05</span><span class="pill pill-ok">已补审</span></div>
             <div class="timeline-focus">主题：Primary / Secondary 基本功</div>
-            <div class="timeline-note">原计划复核 Primary / Secondary，但 conversion goals 无法读取。负责人今天要练的是：没有新证据时，默认沿用最近一次成功结论，而不是脑补系统已经修好。</div>
+            <div class="timeline-note">补审显示点击回升，但 <code>PURCHASE=false / SIGNUP=true</code> 没变。今天最该记住的是：有流量，不等于系统已经学对目标。</div>
           </div>
           <div class="timeline-item">
-            <div class="timeline-head"><span class="timeline-day">Day 12</span><span class="timeline-date">2026-04-06</span><span class="pill pill-danger">受阻</span></div>
+            <div class="timeline-head"><span class="timeline-day">Day 12</span><span class="timeline-date">2026-04-06</span><span class="pill pill-ok">已补审</span></div>
             <div class="timeline-focus">主题：Campaign-specific goals</div>
-            <div class="timeline-note">原计划学 campaign-specific goals，但 budget / goals 读取受阻。今天更真实的学习点是：小预算账户更需要硬证据，不能用感觉替代结构判断。</div>
+            <div class="timeline-note">补审显示 campaign-specific goals 仍旧没变。今天学到的是：campaign 的灵魂是它到底按什么目标学习，不是它今天花了多少钱。</div>
           </div>
           <div class="timeline-item">
-            <div class="timeline-head"><span class="timeline-day">Day 13</span><span class="timeline-date">2026-04-07</span><span class="pill pill-danger">受阻</span></div>
+            <div class="timeline-head"><span class="timeline-day">Day 13</span><span class="timeline-date">2026-04-07</span><span class="pill pill-ok">已补审</span></div>
             <div class="timeline-focus">主题：Sign_up / Place Order / First Purchase / Purchase 分层</div>
-            <div class="timeline-note">原计划练目标分层，但今天正式发现 Google Ads MCP OAuth 已失效。负责人今天最该记住的是：先保证你看得见，再讨论你会不会调。</div>
+            <div class="timeline-note">live 已恢复，而且再次证明 measurement 仍未修。今天最该记住的是：读数恢复以后，真正该修的还是目标体系，不是情绪判断。</div>
           </div>
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 14</span><span class="timeline-date">2026-04-08</span><span class="pill pill-warn">阶段结论</span></div>
