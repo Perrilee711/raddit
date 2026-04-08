@@ -647,21 +647,23 @@
       <div class="card" style="margin-top:16px;">
         <h3>业务侧实际效果分析：2026-03-31 至 2026-04-07</h3>
         <div class="warn-box" style="margin-bottom:12px;">
-          <strong>来源：</strong> <code>2026.3.31-4.7SEM广告数据分析.docx</code>。这份报告补上了 Google Ads MCP 日审看不到的一层：广告带来的注册用户，在业务后台没有继续下单和支付。
+          <strong>来源：</strong> <code>SEM 着陆页流量全链路诊断报告 (2026.3.31-4.7).docx</code>。这份报告补上了 Google Ads MCP 日审看不到的一层：广告带来的注册用户，在业务后台没有继续下单和支付，同时 PC/平板落地页存在明确体验和技术阻塞。
         </div>
         <table>
           <tr><th>维度</th><th>可核实数据</th><th>负责人判断</th></tr>
+          <tr><td>核心点击用户</td><td>10 人</td><td>作为本次全链路漏斗基准</td></tr>
+          <tr><td>成功注册</td><td>4 人</td><td>注册率约 40%，说明流量不是完全无效</td></tr>
+          <tr><td>有效浏览/加购</td><td>1 人</td><td>注册后出现断崖式流失</td></tr>
+          <tr><td>最终下单/支付</td><td>0 人</td><td>业务端完全断裂</td></tr>
           <tr><td>GA4 活跃用户</td><td>17</td><td>广告能把人带到注册/登录相关页面</td></tr>
-          <tr><td>页面互动</td><td>滚动深度 83.36%，活动时间 28 秒</td><td>用户不是完全无效流量，但停留仍偏浅</td></tr>
-          <tr><td>明确新注册用户</td><td>嵌入表可读出 4 个</td><td>注册能发生，但样本量很小</td></tr>
-          <tr><td>下单状态</td><td>全部未下单</td><td>漏斗卡在注册后</td></tr>
-          <tr><td>高意向行为</td><td>H5 端有搜索、运费估算、首页</td><td>H5 承接优于 PC 登录页</td></tr>
-          <tr><td>重点地区</td><td>France、Germany</td><td>可优先观察，但目标未修好前不贸然放量</td></tr>
+          <tr><td>页面互动</td><td>滚动深度 83.36%，活动时间 28 秒</td><td>有探索意愿，但没有被推到交易</td></tr>
+          <tr><td>PC / 平板问题</td><td>登录 Bug、内容缺失、适配差</td><td>PC 冷流量承接失败</td></tr>
+          <tr><td>H5 高意向行为</td><td>图搜、运费估算、教程浏览</td><td>价值被看见，但缺少转化钩子</td></tr>
         </table>
         <div class="danger-box" style="margin-top:12px;">
-          <strong>业务侧结论：</strong> 当前不是“广告完全没带来人”，而是“注册后的下单链路断流”。这进一步支持：不要长期只优化普通 Sign_up，应尽快补 Place Order / First Purchase 目标，并检查注册后的 onboarding 与 PC 登录页承接。
+          <strong>业务侧结论：</strong> 当前不是“广告完全没带来人”，而是“注册后的下单链路断流”。这进一步支持：不要长期只优化普通 Sign_up，应尽快补 Place Order / First Purchase 目标，并优先修 PC 登录 Bug、平板适配、注册后的 onboarding 和 H5 图搜/运费估算转化钩子。
         </div>
-        <p class="muted" style="margin-top:10px;">口径提醒：报告正文写“共 10 个用户属于 SEM 广告投放”，嵌入 xlsx 可读出的明细是 6 条用户日记录、4 个明确新注册用户。看板不把这两个数硬合并，只把它作为业务侧报告口径使用。</p>
+        <p class="muted" style="margin-top:10px;">口径提醒：漏斗表以 10 位核心点击用户为基准，后台明细表可读出 6 条用户日记录、4 个明确新注册用户。看板不把这些口径硬合并，只把它作为业务侧报告口径使用。</p>
       </div>
 
       <div class="grid grid-2">
@@ -853,7 +855,7 @@
           <li>再决定冷启动到底学 <code>Place Order</code>、<code>First Purchase</code> 还是 <code>Sign_up</code>。</li>
           <li>在目标体系没修好前，继续沿用“品牌保守承接”结论。</li>
           <li>Day 14 阶段判断已完成：止血成功，重建未开始。</li>
-          <li>结合业务侧报告，优先检查注册后的 onboarding 和 PC 登录页承接。</li>
+          <li>结合业务侧报告，优先修 PC 登录 Bug、平板适配、注册后的 onboarding 和 H5 图搜/运费估算转化钩子。</li>
           <li>接下来要先修目标体系，再讨论重开拓新结构。</li>
         </ol>
       </div>
@@ -929,7 +931,7 @@
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 14</span><span class="timeline-date">2026-04-08</span><span class="pill pill-ok">已完成</span></div>
             <div class="timeline-focus">主题：两周阶段判断</div>
-            <div class="timeline-note">阶段判断已完成：止血有效，重建未开始；业务侧报告补充证明注册后下单断流。你要学会把平台数据和业务后台漏斗合起来判断，而不是只看 Ads 转化。</div>
+            <div class="timeline-note">阶段判断已完成：止血有效，重建未开始；全链路报告补充证明 10 访问、4 注册、1 有效浏览/加购、0 下单/支付。你要学会把平台数据、业务后台漏斗和录屏体验合起来判断。</div>
           </div>
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 15</span><span class="timeline-date">2026-04-09</span><span class="pill pill-warn">计划中</span></div>
