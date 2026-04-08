@@ -644,6 +644,26 @@
         </table>
       </div>
 
+      <div class="card" style="margin-top:16px;">
+        <h3>业务侧实际效果分析：2026-03-31 至 2026-04-07</h3>
+        <div class="warn-box" style="margin-bottom:12px;">
+          <strong>来源：</strong> <code>2026.3.31-4.7SEM广告数据分析.docx</code>。这份报告补上了 Google Ads MCP 日审看不到的一层：广告带来的注册用户，在业务后台没有继续下单和支付。
+        </div>
+        <table>
+          <tr><th>维度</th><th>可核实数据</th><th>负责人判断</th></tr>
+          <tr><td>GA4 活跃用户</td><td>17</td><td>广告能把人带到注册/登录相关页面</td></tr>
+          <tr><td>页面互动</td><td>滚动深度 83.36%，活动时间 28 秒</td><td>用户不是完全无效流量，但停留仍偏浅</td></tr>
+          <tr><td>明确新注册用户</td><td>嵌入表可读出 4 个</td><td>注册能发生，但样本量很小</td></tr>
+          <tr><td>下单状态</td><td>全部未下单</td><td>漏斗卡在注册后</td></tr>
+          <tr><td>高意向行为</td><td>H5 端有搜索、运费估算、首页</td><td>H5 承接优于 PC 登录页</td></tr>
+          <tr><td>重点地区</td><td>France、Germany</td><td>可优先观察，但目标未修好前不贸然放量</td></tr>
+        </table>
+        <div class="danger-box" style="margin-top:12px;">
+          <strong>业务侧结论：</strong> 当前不是“广告完全没带来人”，而是“注册后的下单链路断流”。这进一步支持：不要长期只优化普通 Sign_up，应尽快补 Place Order / First Purchase 目标，并检查注册后的 onboarding 与 PC 登录页承接。
+        </div>
+        <p class="muted" style="margin-top:10px;">口径提醒：报告正文写“共 10 个用户属于 SEM 广告投放”，嵌入 xlsx 可读出的明细是 6 条用户日记录、4 个明确新注册用户。看板不把这两个数硬合并，只把它作为业务侧报告口径使用。</p>
+      </div>
+
       <div class="grid grid-2">
         <div class="card">
           <h3>这轮调整后，真正发生了什么</h3>
@@ -780,8 +800,8 @@
       <div class="grid grid-3">
         <div class="metric-card">
           <div class="metric-label">当前学习阶段</div>
-          <div class="metric-value">Day 13</div>
-          <div class="metric-note">已进入“补审后判断”阶段</div>
+          <div class="metric-value">Day 14</div>
+          <div class="metric-note">已进入“两周阶段判断”阶段</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">本轮训练主轴</div>
@@ -833,6 +853,7 @@
           <li>再决定冷启动到底学 <code>Place Order</code>、<code>First Purchase</code> 还是 <code>Sign_up</code>。</li>
           <li>在目标体系没修好前，继续沿用“品牌保守承接”结论。</li>
           <li>Day 14 阶段判断已完成：止血成功，重建未开始。</li>
+          <li>结合业务侧报告，优先检查注册后的 onboarding 和 PC 登录页承接。</li>
           <li>接下来要先修目标体系，再讨论重开拓新结构。</li>
         </ol>
       </div>
@@ -908,7 +929,7 @@
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 14</span><span class="timeline-date">2026-04-08</span><span class="pill pill-ok">已完成</span></div>
             <div class="timeline-focus">主题：两周阶段判断</div>
-            <div class="timeline-note">阶段判断已完成：止血有效，重建未开始；最近 7 天只有 Brand Search，花费 <code>$4.51</code>，measurement 仍未修。</div>
+            <div class="timeline-note">阶段判断已完成：止血有效，重建未开始；业务侧报告补充证明注册后下单断流。你要学会把平台数据和业务后台漏斗合起来判断，而不是只看 Ads 转化。</div>
           </div>
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 15</span><span class="timeline-date">2026-04-09</span><span class="pill pill-warn">计划中</span></div>
