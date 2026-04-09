@@ -349,7 +349,7 @@
     <div class="top-metrics">
       <div class="metric-card">
         <div class="metric-label">当前阶段</div>
-        <div class="metric-value">空挂 PMax</div>
+        <div class="metric-value">PMax 微测</div>
         <div class="metric-note">品牌主导 + 启用不等于交付</div>
       </div>
       <div class="metric-card">
@@ -600,13 +600,13 @@
       <div class="grid grid-4">
         <div class="metric-card">
           <div class="metric-label">调整后累计 Spend</div>
-          <div class="metric-value">$11.27</div>
-          <div class="metric-note">2026-03-26 ～ 2026-04-08</div>
+          <div class="metric-value">$16.29</div>
+          <div class="metric-note">2026-03-26 ～ 2026-04-09</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">调整后累计点击</div>
-          <div class="metric-value">63</div>
-          <div class="metric-note">仍然极小量，且集中在 Brand Search</div>
+          <div class="metric-value">73</div>
+          <div class="metric-note">仍然极小量，现已出现 Brand + PMax 双来源</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">调整后累计 Ads 转化</div>
@@ -623,7 +623,7 @@
       <div class="card">
         <h3>每日审计台账</h3>
         <div class="ok-box" style="margin-bottom:12px;">
-          <strong>Day15 live 已完成：</strong> 2026-04-09 读数显示现在存在两个 ENABLED 系列，但只有 Brand Search 真正在交付；<code>Pmax-</code> 目前属于启用但零交付的空挂状态，measurement 仍未修好。
+          <strong>Day15 live 已完成：</strong> 2026-04-09 读数显示第二轮调整已经发生：Brand Search 继续承接，同时 <code>Pmax-</code> 在昨天开始出现少量真实交付；但 measurement 仍未修好。
         </div>
         <table>
           <tr><th>日期</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Ads Conv.</th><th>主要来源</th><th>Measurement</th><th>阶段判断</th></tr>
@@ -640,8 +640,8 @@
           <tr><td>2026-04-05</td><td>$0.82</td><td>14</td><td>5</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：点击回升但目标未修</td></tr>
           <tr><td>2026-04-06</td><td>$0.82</td><td>25</td><td>5</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>补审完成：结构仍未推进</td></tr>
           <tr><td>2026-04-07 完整日</td><td>$1.32</td><td>22</td><td>8</td><td>0</td><td>Brand Search</td><td><span class="pill pill-danger">错</span></td><td>品牌 Search 低量承接</td></tr>
-          <tr><td>2026-04-08 10:06</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>Day14 判断：止血成功，重建未开始</td></tr>
-          <tr><td>2026-04-09 10:59</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无</td><td><span class="pill pill-danger">错</span></td><td>两个启用系列，但只有 Brand 真在花钱</td></tr>
+          <tr><td>2026-04-08 完整日</td><td>$5.02</td><td>45</td><td>10</td><td>0</td><td>Brand Search + <code>Pmax-</code></td><td><span class="pill pill-danger">错</span></td><td>第二轮调整后，PMax 开始少量测试</td></tr>
+          <tr><td>2026-04-09 13:15</td><td>$0.00</td><td>0</td><td>0</td><td>0</td><td>暂无（昨日 Brand + <code>Pmax-</code>）</td><td><span class="pill pill-danger">错</span></td><td>第二轮微调已确认，但 measurement 未修</td></tr>
         </table>
       </div>
 
@@ -676,8 +676,8 @@
             <li>竞品结构不再是活跃主力。</li>
             <li>账户进入保守状态。</li>
             <li>2026-04-03 ～ 2026-04-07 已完成补审，且都显示只有品牌 Search 在低量运行。</li>
-            <li>2026-04-08 Day14 阶段判断已完成：止血有效，重建未开始。</li>
-            <li>2026-04-09 live 显示 <code>Pmax-</code> 已启用，但最近 7 天仍然 0 展示 / 0 点击 / 0 花费，不构成有效重建。</li>
+            <li>2026-04-08 完整日显示 <code>Pmax-</code> 开始出现真实交付：5 展示 / 1 点击 / $3.05。</li>
+            <li>2026-04-09 live 确认第二轮调整已经发生，但当前仍属于“PMax 微量测试”，不是结构重建达标。</li>
           </ul>
           <div class="ok-box" style="margin-top:12px;">这轮动作到目前为止依然是有效止血，但补审结果也再次证明：账户还没有进入结构化重建阶段。</div>
         </div>
@@ -689,6 +689,36 @@
             <li>没有完成真实支付导向的重新学习。</li>
           </ul>
           <div class="danger-box" style="margin-top:12px;">所以你现在看到的是“优化后日变化”，还不是“新模型已经成立”。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>第二轮调整：已确认变化 vs 高概率动作</h3>
+        <div class="grid grid-3">
+          <div>
+            <strong>已确认变化</strong>
+            <ul class="list">
+              <li><code>Pmax-</code> 不再是空挂，已在 2026-04-08 开始少量真实交付。</li>
+              <li>Brand Search 没被推翻，仍是主承接系列。</li>
+              <li>没有新的 Non-brand Search / Remarketing 正式上线。</li>
+            </ul>
+          </div>
+          <div>
+            <strong>高概率动作</strong>
+            <ul class="list">
+              <li>“拉了下预算”高概率发生在 <code>Pmax-</code>。</li>
+              <li>“改了下 search term”高概率是 PMax search themes / 搜索意图设置。</li>
+              <li>“Ad assets 也改了下”高概率是 PMax 素材层微调。</li>
+            </ul>
+          </div>
+          <div>
+            <strong>仍未修的核心问题</strong>
+            <ul class="list">
+              <li>没修 <code>Purchase / Sign_up / 注册 (1)</code> 主学习关系。</li>
+              <li>没把 <code>PURCHASE</code> 从 <code>biddable false</code> 扶正。</li>
+              <li>没建立新增长结构，只是在错误目标下推进第二个系列测试。</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -720,7 +750,7 @@
         <div class="metric-card">
           <div class="metric-label">阶段判断</div>
           <div class="metric-value">Day15</div>
-          <div class="metric-note">品牌主导 + 空挂 PMax</div>
+          <div class="metric-note">品牌主导 + PMax 微量测试</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">当前最重要任务</div>
@@ -734,8 +764,8 @@
           <h3>老板总览</h3>
           <table>
             <tr><th>项目</th><th>当前值</th><th>负责人解读</th></tr>
-            <tr><td>当前阶段</td><td>品牌主导 + 空挂 PMax</td><td>账户仍安全，但开始出现“启用不等于交付”的误判风险</td></tr>
-            <tr><td>最近一次成功 live 数据</td><td>2026-04-09 10:59</td><td>当前 dashboard 最新可靠读数已更新到 Day 15</td></tr>
+            <tr><td>当前阶段</td><td>品牌主导 + PMax 微量测试</td><td>账户仍安全，但还不是增长结构</td></tr>
+            <tr><td>最近一次成功 live 数据</td><td>2026-04-09 13:15</td><td>当前 dashboard 最新可靠读数已更新到第二轮调整后</td></tr>
             <tr><td>当前能否继续日审</td><td><span class="pill pill-ok">是</span></td><td>Google Ads MCP 认证已恢复</td></tr>
             <tr><td>当前最重要任务</td><td>修正目标体系</td><td>先处理 Purchase / Sign_up / 注册 (1)</td></tr>
           </table>
@@ -761,7 +791,7 @@
           <tr><th>层级</th><th>当前真实状态</th><th>判断</th></tr>
           <tr><td>Brand Search</td><td>截至 2026-04-09：已保留，且仍是唯一真实交付系列</td><td><span class="pill pill-ok">最新 live 结论</span></td></tr>
           <tr><td>Non-brand Search</td><td>截至 2026-04-09：未上线</td><td><span class="pill pill-danger">最新 live 结论</span></td></tr>
-          <tr><td>PMax Prospecting</td><td>截至 2026-04-09：存在一个启用的 <code>Pmax-</code>，但最近 7 天 0 展示 / 0 点击 / 0 花费</td><td><span class="pill pill-warn">空挂，不算有效重建</span></td></tr>
+          <tr><td>PMax Prospecting</td><td>截至 2026-04-09：<code>Pmax-</code> 最近 7 天已出现 5 展示 / 1 点击 / $3.05 花费</td><td><span class="pill pill-warn">开始测试，但不算重建达标</span></td></tr>
           <tr><td>Remarketing</td><td>截至 2026-04-09：未见正式独立系列</td><td><span class="pill pill-danger">最新 live 结论</span></td></tr>
         </table>
       </div>
@@ -782,17 +812,19 @@
           <div class="ok-box">
             <strong>今天应该做</strong>
             <ul class="list">
+              <li>让投手明确回答：<code>Pmax-</code> 预算到底从多少调到多少。</li>
+              <li>让投手解释：他说的 <code>search term</code> 是 Search 关键词还是 PMax search themes。</li>
+              <li>让投手列出：这次改了哪些 <code>ad assets</code>，以及准备验证什么。</li>
               <li>立刻核清 Purchase / Sign_up / 注册 (1) 的主学习关系。</li>
-              <li>决定冷启动未来到底学 Place Order、First Purchase 还是 Sign_up。</li>
               <li>在目标体系没修好前，继续保持旧 PMax / 竞品 Search / Demand Gen 暂停。</li>
             </ul>
           </div>
           <div class="danger-box" style="margin-top:12px;">
             <strong>今天不该做</strong>
             <ul class="list">
-              <li>不要把品牌词还在花钱误判成“新模型已经恢复”。</li>
+              <li>不要把 <code>Pmax-</code> 开始花钱误判成“第二轮优化已经成功”。</li>
               <li>不要在 Purchase 未扶正前重开旧拓新结构。</li>
-              <li>不要把这几天的 0 转化直接解读成“支付模型失败”。</li>
+              <li>不要把这几天的低量波动直接解读成“支付模型开始变好”。</li>
             </ul>
           </div>
         </div>
@@ -805,7 +837,7 @@
         <div class="metric-card">
           <div class="metric-label">当前学习阶段</div>
           <div class="metric-value">Day 15</div>
-          <div class="metric-note">开始练“启用不等于交付”</div>
+          <div class="metric-note">开始练“表层微调 vs 根部修正”</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">本轮训练主轴</div>
@@ -858,7 +890,7 @@
           <li>在目标体系没修好前，继续沿用“品牌保守承接”结论。</li>
           <li>Day 14 阶段判断已完成：止血成功，重建未开始。</li>
           <li>结合业务侧报告，优先修 PC 登录 Bug、平板适配、注册后的 onboarding 和 H5 图搜/运费估算转化钩子。</li>
-          <li>核清 <code>Pmax-</code> 为什么已启用却零交付，避免它在 measurement 没修好的情况下被误放量。</li>
+          <li>核清 <code>Pmax-</code> 在什么目标下开始交付，避免它在 measurement 没修好的情况下被误放量。</li>
           <li>接下来要先修目标体系，再讨论重开拓新结构。</li>
         </ol>
       </div>
@@ -939,7 +971,7 @@
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 15</span><span class="timeline-date">2026-04-09</span><span class="pill pill-ok">已完成</span></div>
             <div class="timeline-focus">主题：启用、交付、学习目标是三件事</div>
-            <div class="timeline-note">live 审计显示现在有两个 ENABLED 系列，但只有 Brand 真在花钱；你要学会区分“启用”“交付”和“学习目标”三件事，避免被空挂的 <code>Pmax-</code> 误导。</div>
+            <div class="timeline-note">第二轮调整后，<code>Pmax-</code> 已开始少量交付。你最该记住的是：预算、search themes、assets 的微调，不等于 measurement 和增长模型已经修对。</div>
           </div>
           <div class="timeline-item">
             <div class="timeline-head"><span class="timeline-day">Day 16</span><span class="timeline-date">2026-04-10</span><span class="pill pill-warn">计划中</span></div>
