@@ -58,6 +58,32 @@ def sanitize(value: Any) -> Any:
     return value
 
 
+def safe_query(
+    out: dict[str, Any],
+    errors: dict[str, str],
+    key: str,
+    customer_id: str,
+    *,
+    fields: list[str],
+    resource: str,
+    conditions: list[str] | None = None,
+    orderings: list[str] | None = None,
+    limit: int | str | None = None,
+) -> None:
+    try:
+        out[key] = query(
+            customer_id,
+            fields=fields,
+            resource=resource,
+            conditions=conditions,
+            orderings=orderings,
+            limit=limit,
+        )
+    except Exception as exc:  # pragma: no cover - resilience path for flaky API/network
+        out[key] = []
+        errors[key] = repr(exc)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", required=True, help="Audit date in YYYY-MM-DD")
@@ -75,8 +101,12 @@ def main() -> None:
     d7 = seven_days_ago.isoformat()
 
     out: dict[str, Any] = {"date": d, "customer_id": args.customer_id}
+    errors: dict[str, str] = {}
 
-    out["account_today"] = query(
+    safe_query(
+        out,
+        errors,
+        "account_today",
         args.customer_id,
         resource="customer",
         fields=[
@@ -91,7 +121,10 @@ def main() -> None:
         limit=10,
     )
 
-    out["campaigns_today"] = query(
+    safe_query(
+        out,
+        errors,
+        "campaigns_today",
         args.customer_id,
         resource="campaign",
         fields=[
@@ -114,7 +147,10 @@ def main() -> None:
         limit=100,
     )
 
-    out["campaigns_yesterday"] = query(
+    safe_query(
+        out,
+        errors,
+        "campaigns_yesterday",
         args.customer_id,
         resource="campaign",
         fields=[
@@ -135,7 +171,10 @@ def main() -> None:
         limit=100,
     )
 
-    out["campaigns_last_7d"] = query(
+    safe_query(
+        out,
+        errors,
+        "campaigns_last_7d",
         args.customer_id,
         resource="campaign",
         fields=[
@@ -157,7 +196,10 @@ def main() -> None:
         limit=100,
     )
 
-    out["search_terms_today"] = query(
+    safe_query(
+        out,
+        errors,
+        "search_terms_today",
         args.customer_id,
         resource="search_term_view",
         fields=[
@@ -181,7 +223,10 @@ def main() -> None:
         limit=100,
     )
 
-    out["keywords_today"] = query(
+    safe_query(
+        out,
+        errors,
+        "keywords_today",
         args.customer_id,
         resource="keyword_view",
         fields=[
@@ -204,7 +249,10 @@ def main() -> None:
         limit=200,
     )
 
-    out["conversion_actions"] = query(
+    safe_query(
+        out,
+        errors,
+        "conversion_actions",
         args.customer_id,
         resource="conversion_action",
         fields=[
@@ -221,7 +269,10 @@ def main() -> None:
         limit=200,
     )
 
-    out["campaign_goals"] = query(
+    safe_query(
+        out,
+        errors,
+        "campaign_goals",
         args.customer_id,
         resource="campaign_conversion_goal",
         fields=[
@@ -241,6 +292,8 @@ def main() -> None:
         ],
         limit=1000,
     )
+
+    out["errors"] = errors
 
     print(json.dumps(sanitize(out), ensure_ascii=False, indent=2))
 
