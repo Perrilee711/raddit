@@ -1,0 +1,8 @@
+{
+  "questions": [
+    "远程服务器部署在哪台机器上",
+    "Google Ads 凭证如何从本机迁移到远程",
+    "Gemini 是否优先走 HTTP bridge",
+    "业务报表 ingest 是否需要统一模板"
+  ]
+}
