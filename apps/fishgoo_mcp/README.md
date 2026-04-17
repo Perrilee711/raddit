@@ -18,6 +18,12 @@
 
 ## 本地安装
 
+注意：
+
+- 官方 Python MCP SDK 建议使用较新的 Python 版本。
+- 当前这台机器的系统 Python 是 `3.9.6`，可用于大部分骨架开发与测试，但不建议作为正式远程运行时。
+- 正式远程环境请使用 `Python 3.11+`。
+
 ```bash
 /usr/bin/python3 -m venv .venv
 source .venv/bin/activate
