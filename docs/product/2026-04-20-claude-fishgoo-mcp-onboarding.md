@@ -13,6 +13,7 @@
 | Auth | `Authorization: Bearer <找 Perri 要 token>` |
 | Bridge Health（公开） | `https://mcp.perrilee.com/fishgoo-bridge/health` |
 | Bridge Memory（需 token） | `https://mcp.perrilee.com/fishgoo-bridge/memory/overview` |
+| Ad Board（需 Basic Auth） | `https://mcp.perrilee.com/ad-board/` |
 
 ---
 

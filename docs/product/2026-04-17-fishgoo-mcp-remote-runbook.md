@@ -116,17 +116,48 @@ python apps/fishgoo_mcp/server.py
 
 ---
 
-## 7. 反向代理建议
+## 7. 反向代理（已落地：mcp.perrilee.com）
 
-建议用 `nginx` 暴露两个入口：
+实际实现上并没有用两个子域名，而是把所有入口聚合到 `mcp.perrilee.com`（Let's Encrypt 签 SSL），nginx 配置在 `/etc/nginx/conf.d/cs-dashboard-mcp.conf`：
 
-- `mcp.fishgoo.com`
-- `mcp-api.fishgoo.com`
+| 路径 | 作用 | 鉴权 |
+| --- | --- | --- |
+| `/fishgoo-mcp` | → `127.0.0.1:8766/mcp`（MCP server） | Bearer |
+| `/fishgoo-bridge/` | → `127.0.0.1:8767/`（HTTP bridge） | Bearer（`/health` 除外） |
+| `/ad-board/` | 静态 HTML 看板（`/var/www/fishgoo-ad-board/`） | nginx Basic Auth |
 
-其中：
+### 7.1 Ad Board 部署与刷新
 
-- `mcp.fishgoo.com` 指向 MCP server
-- `mcp-api.fishgoo.com` 指向 HTTP bridge
+- 静态文件目录：`/var/www/fishgoo-ad-board/`
+  - `index.html` ← `/root/raddit/fishgoo-ad-board.html`（V3 最新）
+  - `v2.html`、`v3.html` ← `FISHGOO_广告成长档案/05_30天广告成长看板/` 里的归档
+- Basic Auth 密码文件：`/etc/nginx/.htpasswd.ad-board`（`root:nginx` `640`）
+- 刷新脚本：`/usr/local/bin/fishgoo-board-refresh.sh`
+
+**为什么不用 symlink**：`/root/` 权限 `550`，nginx 用户穿不过去。所以采用"仓库 → `git pull` → 跑 refresh 脚本复制"的两步流程。
+
+### 7.2 看板更新流程
+
+每次本地更新 `fishgoo-ad-board.html` 并 push 后：
+
+```bash
+ssh root@<server>
+cd /root/raddit && git pull
+sudo /usr/local/bin/fishgoo-board-refresh.sh
+```
+
+看板立刻生效（加了 `Cache-Control: no-cache`，浏览器强刷即可）。
+
+### 7.3 Basic Auth 密码轮换
+
+```bash
+NEW_BOARD_PASS=$(openssl rand -hex 12)
+sudo htpasswd -b /etc/nginx/.htpasswd.ad-board perri "$NEW_BOARD_PASS"
+# nginx 不需要 reload，htpasswd 每次请求现读
+echo "New board password: $NEW_BOARD_PASS"
+```
+
+如需增加用户（合作方只读）：`sudo htpasswd -b /etc/nginx/.htpasswd.ad-board <username> <password>`。
 
 ---
 
