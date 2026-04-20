@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from collections.abc import Iterable, Mapping
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,25 @@ def load_google_ads_env() -> None:
     project_id = env.get("GOOGLE_PROJECT_ID")
     if project_id:
         os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
+
+
+def sanitize(value):
+    if isinstance(value, Mapping):
+        return {k: sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [sanitize(v) for v in value]
+    if isinstance(value, tuple):
+        return [sanitize(v) for v in value]
+    if isinstance(value, (str, bytes, bytearray)):
+        return value
+    if hasattr(value, "__iter__") and value.__class__.__name__.startswith("Repeated"):
+        return [sanitize(v) for v in value]
+    if isinstance(value, Iterable):
+        try:
+            return [sanitize(v) for v in value]
+        except TypeError:
+            return value
+    return value
 
 
 def main() -> None:
@@ -53,7 +73,7 @@ def main() -> None:
         orderings=["change_event.change_date_time DESC"],
         limit=args.limit,
     )
-    print(json.dumps(rows, ensure_ascii=False, indent=2))
+    print(json.dumps(sanitize(rows), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

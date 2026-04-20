@@ -7,6 +7,7 @@ Outputs JSON to stdout for the requested date.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterable, Mapping
 import json
 import os
 from datetime import date, timedelta
@@ -53,14 +54,21 @@ def query(
 
 
 def sanitize(value: Any) -> Any:
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return {k: sanitize(v) for k, v in value.items()}
     if isinstance(value, list):
         return [sanitize(v) for v in value]
     if isinstance(value, tuple):
         return [sanitize(v) for v in value]
+    if isinstance(value, (str, bytes, bytearray)):
+        return value
     if hasattr(value, "__iter__") and value.__class__.__name__.startswith("Repeated"):
         return [sanitize(v) for v in value]
+    if isinstance(value, Iterable):
+        try:
+            return [sanitize(v) for v in value]
+        except TypeError:
+            return value
     return value
 
 
