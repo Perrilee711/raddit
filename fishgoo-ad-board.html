@@ -799,6 +799,38 @@
       </div>
       <!-- AUTO:CURRENT_OPS:END -->
 
+      <!-- AUTO:BUSINESS_SNAPSHOT:START -->
+      <div class="card" style="margin-top:16px;">
+        <h3>💼 真实业务快照（来自业务后台 · USD 口径）</h3>
+        <div class="metric-note" style="margin-bottom:12px;">等待接入 Metabase 自动刷新 · 当前为 Day26 人工对齐快照</div>
+        <div class="grid grid-4">
+          <div class="metric-card">
+            <div class="metric-label">30 天真实 GMV</div>
+            <div class="metric-value">$1,343</div>
+            <div class="metric-note">68 新用户 / 48 支付订单 · 来源：Metabase</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">30 天总营收（含物流）</div>
+            <div class="metric-value">$1,833</div>
+            <div class="metric-note">代购全链路收入</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">真实 ROAS</div>
+            <div class="metric-value">3.41</div>
+            <div class="metric-note">e-com benchmark 3.68 的 93%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">下单→支付</div>
+            <div class="metric-value">14.8%</div>
+            <div class="metric-note">最大优化杠杆 · 升到 25% 则 ROAS → 5.77</div>
+          </div>
+        </div>
+        <div class="metric-note" style="margin-top:12px;opacity:0.7;">
+          ⚠️ Google Ads 侧看到的 transaction value 只有 $609 —— 失真 15.9 倍。修 purchase event 后系统才能正确优化。
+        </div>
+      </div>
+      <!-- AUTO:BUSINESS_SNAPSHOT:END -->
+
       <div class="grid grid-2">
         <div class="card">
           <h3>老板总览</h3>
