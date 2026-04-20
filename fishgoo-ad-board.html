@@ -375,6 +375,7 @@
       <button class="tab-btn" data-tab="audit">调整后日审计</button>
       <button class="tab-btn" data-tab="ops">当前驾驶舱</button>
       <button class="tab-btn" data-tab="learning">学习成长</button>
+      <button class="tab-btn" data-tab="ceo-report">📈 月报预览</button>
     </div>
 
     <section class="tab-panel active" id="tab-baseline">
@@ -1136,6 +1137,154 @@
         </div>
       </div>
     </section>
+
+    <section class="tab-panel" id="tab-ceo-report">
+      <h2 class="section-title">📈 月报预览</h2>
+
+      <!-- AUTO:MONTHLY_REPORT:START -->
+      <div class="callout">
+        <strong>📅 2026 年 3 月 SEM 月报 · v1 · 给 CEO</strong><br>
+        数据时段：2026-03-01 ~ 2026-03-31（完整月）· 汇率 <strong>6.8921</strong> 管理口径 · 只 SEM 渠道 · 每月 1-2 号更新下一期
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>🎯 Executive Summary（30 秒版本）</h3>
+        <p style="line-height:1.8;"><strong>3 月是 SEM 渠道的"测试收敛月"</strong>：花费 <code>$2,272</code>，带来真实业务总营收 <code>$2,378</code>（ROAS <code>1.05</code>），看上去踩盈亏平衡线。<strong>但故事的真正价值不在数字，在决策</strong> —— 月底果断 pause 掉占花费 73% 的 reddit 意向受众测试 campaign（$1,668），收敛到单主 Pmax- + brand search 的精简结构。<strong>这个决策让 4 月 ROAS 反弹到 3.56</strong>（e-commerce benchmark 3.68 的 97%）。</p>
+      </div>
+
+      <div class="grid grid-4" style="margin-top:16px;">
+        <div class="metric-card">
+          <div class="metric-label">3 月 Ads 花费</div>
+          <div class="metric-value">$2,272</div>
+          <div class="metric-note">vs 2 月 $2,338 · -3%</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">3 月真实总营收</div>
+          <div class="metric-value">$2,378</div>
+          <div class="metric-note">vs 2 月 $3,331 · <span class="warn">-29%</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">3 月真实 ROAS</div>
+          <div class="metric-value">1.05</div>
+          <div class="metric-note">benchmark 3.68 的 29%</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">近 30 天 ROAS（对比）</div>
+          <div class="metric-value good">3.56</div>
+          <div class="metric-note">收敛后 <strong>+3.4 倍</strong></div>
+        </div>
+      </div>
+
+      <div class="grid grid-4" style="margin-top:16px;">
+        <div class="metric-card">
+          <div class="metric-label">3 月新用户数</div>
+          <div class="metric-value">132</div>
+          <div class="metric-note">vs 2 月 94 · <span class="good">+40%</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">3 月支付订单数</div>
+          <div class="metric-value">59</div>
+          <div class="metric-note">vs 2 月 60 · 持平</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">3 月下单→支付率</div>
+          <div class="metric-value warn">24.3%</div>
+          <div class="metric-note">vs 2 月 46.3% · <span class="warn">-48%</span> 单点风险</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Ads value 失真倍数</div>
+          <div class="metric-value warn">2.3x</div>
+          <div class="metric-note">Google Ads 只看到真实的 43%</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
+          <h3>📊 3 月花费拆分（谁在烧钱）</h3>
+          <table>
+            <tr><th>Campaign</th><th>花费</th><th>占比</th><th>状态</th></tr>
+            <tr><td><strong>reddit+意向受众0123</strong></td><td><strong>$1,668</strong></td><td><strong>73%</strong></td><td><span class="pill pill-danger">月底 pause</span></td></tr>
+            <tr><td>Pmax-</td><td>$366</td><td>16%</td><td><span class="pill pill-ok">保留</span></td></tr>
+            <tr><td>search -品牌-0925</td><td>$238</td><td>10%</td><td><span class="pill pill-ok">保留</span></td></tr>
+            <tr style="background:rgba(47,111,222,0.05);"><td><strong>合计</strong></td><td><strong>$2,272</strong></td><td>100%</td><td>—</td></tr>
+          </table>
+          <div class="metric-note" style="margin-top:8px;">3 月最重要的事不是花了多少，是用 $1,668 <strong>证伪 reddit 意向受众</strong>这条路径 —— 这是反脆弱性投入，不是失败。</div>
+        </div>
+
+        <div class="card">
+          <h3>👥 按推广者拆分（团队内部归因）</h3>
+          <table>
+            <tr><th>推广者</th><th>归属</th><th>新用户</th><th>支付单</th><th>总营收</th><th>占比</th></tr>
+            <tr><td>Jasonq385</td><td>ben</td><td>124</td><td>54</td><td>$2,219</td><td><strong>93%</strong></td></tr>
+            <tr><td>simon 🆕</td><td>perri</td><td>8</td><td>5</td><td>$160</td><td>7%</td></tr>
+            <tr style="background:rgba(47,111,222,0.05);"><td><strong>合计</strong></td><td>—</td><td><strong>132</strong></td><td><strong>59</strong></td><td><strong>$2,378</strong></td><td>100%</td></tr>
+          </table>
+          <div class="metric-note" style="margin-top:8px;">simon 3/30 签约，3 月仅最后 2 天产生少量数据。<strong>2 周数据不够做人事结论</strong>，观察到 5 月中旬再评估是否扩招。</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
+          <h3>✅ 3 月做得好的 3 件事</h3>
+          <ul style="line-height:1.9;">
+            <li><strong>果断 pause reddit+意向受众（$1,668）</strong> · 跑了 2 个多月没起量，3 月底收敛。这是 discipline 不是犹豫 · 4 月 ROAS 3.56 全来自这决策</li>
+            <li><strong>品牌词 QS 保持满分（10/10）</strong> · "fishgoo" CTR 23.64%，是 2025-09 brand 重建的可持续回报</li>
+            <li><strong>新推广者 simon 签约上线</strong> · 3/30 签约，团队扩容的第一步，4 月爬坡数据已看到正信号</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>⚠️ 3 月发现的 3 个风险</h3>
+          <ul style="line-height:1.9;">
+            <li><strong>Measurement 仍然学 SIGNUP 不学 PURCHASE</strong> · Google Ads 看到的 value 是真实业务的 43%（失真 2.3x）· 修复依赖网站端 GTM，SEM 团队独立搞不定</li>
+            <li><strong>下单→支付率断崖下滑（46.3% → 24.3%）</strong> · 下单 +40% 但支付持平 · 问题不在流量，在支付流程本身 · <strong>这是业务侧最高优先级</strong></li>
+            <li><strong>PMax 结构仍脆弱</strong> · 单 asset group "竞对app" · Ad Strength AVERAGE · 无 brand exclusion · 地域 PRESENCE_OR_INTEREST · 抗风险能力不足</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>🚀 4 月下半月 & 5 月计划（3 件关键动作）</h3>
+        <table>
+          <tr><th>#</th><th>动作</th><th>预期影响</th><th>需要 CEO 支持</th></tr>
+          <tr>
+            <td>1</td>
+            <td><strong>修 Measurement · 验 purchase event + 改 primary goal</strong></td>
+            <td>系统能看到真实 value 才能安全 scale</td>
+            <td>推动网站技术排期优先级</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>业务侧推支付漏斗优化（支付提醒、价格透明、支付方式）</strong></td>
+            <td>下单→支付 24% → 35% · 同等花费 ROAS 3.56 → 5.19（突破 benchmark）</td>
+            <td>资源调度 · 产品优先级 1</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><strong>广告侧精进（brand exclusion / 改地域 / 开 non-brand / brand 换 IS bidding）</strong></td>
+            <td>ROAS +10-15% · Pmax 结构抗风险能力提升</td>
+            <td>Perri 自己能跑，无需 CEO 介入</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>🧭 需要 CEO 决策/支持的 3 件事</h3>
+        <ul style="line-height:1.9;">
+          <li><strong>① 排期网站技术修 purchase event</strong> · 跨部门依赖，SEM 团队推不动 · 修完 ROAS 可见度恢复；不修永远在盲投</li>
+          <li><strong>② 资源支持业务侧推支付漏斗优化</strong> · 下单→支付 24%→35% 带来 ROAS +46% · 是本月最大单点增量杠杆</li>
+          <li><strong>③ 4 月预算维持 $40/天的决策</strong> · 在 Measurement 修复前加预算是烧钱 · 需要 CEO 挡住其他部门加预算的要求</li>
+        </ul>
+      </div>
+
+      <div class="callout" style="margin-top:16px;">
+        📄 <strong>完整月报 md（含附录 / 原始数据 / 数据源声明 / 版本历史）</strong>：<a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/06_%E6%9C%88%E5%BA%A6CEO%E6%B1%87%E6%8A%A5/2026-03_SEM%E6%9C%88%E6%8A%A5_%E7%BB%99CEO.md" target="_blank" rel="noopener">📎 在 GitHub 打开完整版</a><br>
+        🗂️ <strong>月报归档目录</strong>：<a href="https://github.com/Perrilee711/raddit/tree/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/06_%E6%9C%88%E5%BA%A6CEO%E6%B1%87%E6%8A%A5" target="_blank" rel="noopener">🗂️ 查看所有月报</a><br>
+        🔗 <strong>关联：</strong>
+        <a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/03_%E5%90%8E%E7%BB%AD%E8%A7%82%E6%B5%8B%E8%AE%A1%E5%88%92/Day26_%E6%B7%B1%E5%BA%A6%E5%AE%A1%E8%AE%A1_%E5%90%88%E4%BC%99%E4%BA%BA%E8%A7%86%E8%A7%92_2026-04-20.md" target="_blank" rel="noopener">Day 26 深度审计 v3.1</a>
+      </div>
+      <!-- AUTO:MONTHLY_REPORT:END -->
+    </section>
   </div>
 
   <script>
@@ -1146,6 +1295,7 @@
       audit: document.getElementById('tab-audit'),
       ops: document.getElementById('tab-ops'),
       learning: document.getElementById('tab-learning'),
+      'ceo-report': document.getElementById('tab-ceo-report'),
     };
     buttons.forEach((button) => {
       button.addEventListener('click', () => {
