@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from apps.fishgoo_mcp.paths import ARCHIVE_ROOT, BOARD_MD, FOLLOW_UP_DIR, MEMORY_ROOT
+from apps.fishgoo_mcp.paths import ARCHIVE_ROOT, BOARD_MD, FOLLOW_UP_DIR, GENERATED_DAILY_DIR, MEMORY_ROOT
 from apps.fishgoo_mcp.memory.writers import write_json_document, write_jsonl_document
 
 
@@ -14,7 +14,10 @@ DAY_PATTERN = re.compile(r"^(Day\d+)反馈_(\d{4}-\d{2}-\d{2})\.md$")
 
 def list_day_feedback_files(archive_root: Path = ARCHIVE_ROOT) -> list[Path]:
     feedback_dir = archive_root / "03_后续观测计划"
-    return sorted(feedback_dir.glob("Day*反馈_*.md"))
+    files = list(feedback_dir.glob("Day*反馈_*.md"))
+    if GENERATED_DAILY_DIR.exists():
+        files.extend(GENERATED_DAILY_DIR.glob("Day*反馈_*.md"))
+    return sorted(files)
 
 
 def extract_section_lines(markdown: str, header: str) -> list[str]:
@@ -29,7 +32,15 @@ def extract_section_lines(markdown: str, header: str) -> list[str]:
             break
         if capture:
             captured.append(line)
-    return [line for line in captured if line.strip()]
+    return [line for line in captured if line.strip() and line.strip() != "---"]
+
+
+def extract_first_available_section(markdown: str, headers: list[str]) -> list[str]:
+    for header in headers:
+        lines = extract_section_lines(markdown, header)
+        if lines:
+            return lines
+    return []
 
 
 def build_overview() -> dict[str, Any]:
@@ -49,6 +60,21 @@ def build_overview() -> dict[str, Any]:
 
 
 def build_current_truth() -> dict[str, Any]:
+    timeline = build_audit_timeline()
+    if timeline:
+        latest_path = ARCHIVE_ROOT.parent / timeline[-1]["path"]
+        latest_text = latest_path.read_text(encoding="utf-8")
+        latest_conclusion = extract_first_available_section(latest_text, ["## 一、今日核心结论"])
+        latest_actions = extract_first_available_section(
+            latest_text,
+            ["## 九、下一步建议", "## 七、下一步建议", "### 今日动作建议"],
+        )
+        return {
+            "updated_from": str(latest_path.relative_to(ARCHIVE_ROOT.parent)),
+            "current_judgment": latest_conclusion[:12],
+            "next_actions_excerpt": latest_actions[:12],
+        }
+
     board_text = BOARD_MD.read_text(encoding="utf-8")
     current_judgment = extract_section_lines(board_text, "### 当前总判断")
     next_actions = extract_section_lines(board_text, "### 今日动作建议")
@@ -60,22 +86,24 @@ def build_current_truth() -> dict[str, Any]:
 
 
 def build_audit_timeline() -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+    deduped: dict[tuple[str, str], dict[str, Any]] = {}
     for path in list_day_feedback_files():
         match = DAY_PATTERN.match(path.name)
         if not match:
             continue
         day_label, day_date = match.groups()
         title = path.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip()
-        rows.append(
-            {
-                "day": day_label,
-                "date": day_date,
-                "title": title,
-                "path": str(path.relative_to(ARCHIVE_ROOT.parent)),
-            }
-        )
-    return rows
+        deduped[(day_label, day_date)] = {
+            "day": day_label,
+            "date": day_date,
+            "title": title,
+            "path": str(path.relative_to(ARCHIVE_ROOT.parent)),
+        }
+    sorted_keys = sorted(
+        deduped,
+        key=lambda item: (item[1], int(item[0].replace("Day", ""))),
+    )
+    return [deduped[key] for key in sorted_keys]
 
 
 def build_business_reports_index() -> dict[str, Any]:

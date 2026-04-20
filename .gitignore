@@ -12,3 +12,5 @@ __pycache__/
 /docs/product/data/studies/
 /tmp/
 .deploy_keys/
+.vercel
+/data/fishgoo_generated/

@@ -1,0 +1,14 @@
+[Unit]
+Description=Fishgoo Daily Audit and Board Refresh
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/raddit
+EnvironmentFile=/root/raddit/.env.fishgoo-mcp
+Environment=PYTHONPATH=/root/raddit
+ExecStartPre=/usr/bin/git -C /root/raddit pull --rebase origin main
+ExecStart=/root/raddit/.venv/bin/python /root/raddit/scripts/run_fishgoo_daily_refresh.py --publish
+
+[Install]
+WantedBy=multi-user.target

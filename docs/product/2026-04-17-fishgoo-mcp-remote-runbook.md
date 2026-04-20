@@ -148,6 +148,33 @@ sudo /usr/local/bin/fishgoo-board-refresh.sh
 
 看板立刻生效（加了 `Cache-Control: no-cache`，浏览器强刷即可）。
 
+### 7.4 每日 10:00 自动刷新
+
+服务器现在支持一条独立的自动刷新链路：
+
+- `fishgoo-daily-refresh.service`
+- `fishgoo-daily-refresh.timer`
+
+职责：
+
+1. 每天 `10:00` 自动跑一次 Google Ads 日审
+2. 把结果写入 `data/fishgoo_generated/daily_feedback/`
+3. 重建 `memory/`
+4. 生成自动版 `data/fishgoo_generated/board/fishgoo-ad-board.html`
+5. 自动执行 `/usr/local/bin/fishgoo-board-refresh.sh` 发布到 `/ad-board/`
+
+启停方式：
+
+```bash
+sudo cp deploy/fishgoo-mcp/fishgoo-daily-refresh.service /etc/systemd/system/
+sudo cp deploy/fishgoo-mcp/fishgoo-daily-refresh.timer /etc/systemd/system/
+sudo cp deploy/fishgoo-mcp/fishgoo-board-refresh.sh /usr/local/bin/fishgoo-board-refresh.sh
+sudo chmod +x /usr/local/bin/fishgoo-board-refresh.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now fishgoo-daily-refresh.timer
+systemctl list-timers --all | grep fishgoo
+```
+
 ### 7.3 Basic Auth 密码轮换
 
 ```bash

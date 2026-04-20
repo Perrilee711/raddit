@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Fishgoo daily board refresh at 10:00
+
+[Timer]
+OnCalendar=*-*-* 10:00:00
+Persistent=true
+Unit=fishgoo-daily-refresh.service
+
+[Install]
+WantedBy=timers.target

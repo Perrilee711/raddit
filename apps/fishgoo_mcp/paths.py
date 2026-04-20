@@ -7,6 +7,10 @@ APP_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = APP_ROOT.parent.parent
 ARCHIVE_ROOT = REPO_ROOT / "FISHGOO_广告成长档案"
 MEMORY_ROOT = REPO_ROOT / "memory"
+GENERATED_ROOT = REPO_ROOT / "data" / "fishgoo_generated"
+GENERATED_DAILY_DIR = GENERATED_ROOT / "daily_feedback"
+GENERATED_DAILY_JSON_DIR = GENERATED_ROOT / "daily_payloads"
+GENERATED_BOARD_HTML = GENERATED_ROOT / "board" / "fishgoo-ad-board.html"
 BOARD_HTML = REPO_ROOT / "fishgoo-ad-board.html"
 BOARD_MD = (
     ARCHIVE_ROOT
