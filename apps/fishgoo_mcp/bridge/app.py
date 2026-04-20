@@ -11,6 +11,9 @@ from apps.fishgoo_mcp.schemas import ToolResult
 from apps.fishgoo_mcp.tools.ads_daily_audit import run_daily_audit, summarize_account_totals
 
 
+PUBLIC_PATHS = frozenset({"/health"})
+
+
 class FishgooMcpBridgeHandler(BaseHTTPRequestHandler):
     server_version = "FishgooMcpBridge/0.1"
 
@@ -25,8 +28,27 @@ class FishgooMcpBridgeHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:  # noqa: A003
         return
 
+    def _check_auth(self, path: str) -> bool:
+        if path in PUBLIC_PATHS:
+            return True
+        token = get_settings().auth_token
+        if not token:
+            # Local dev mode: server.py mirrors the same behaviour.
+            return True
+        header = self.headers.get("Authorization", "")
+        if not header.lower().startswith("bearer "):
+            self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "message": "missing_bearer"})
+            return False
+        presented = header.split(" ", 1)[1].strip()
+        if presented != token:
+            self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "message": "invalid_token"})
+            return False
+        return True
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if not self._check_auth(parsed.path):
+            return
         query = parse_qs(parsed.query)
 
         if parsed.path == "/health":

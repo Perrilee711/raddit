@@ -60,10 +60,15 @@ export FISHGOO_MCP_HTTP_PORT=8767
 export FISHGOO_GOOGLE_ADS_CUSTOMER_ID=1573113113
 export FISHGOO_PYTHON_BIN=/usr/bin/python3
 export FISHGOO_ADS_VENDOR_PATH=/path/to/ads_vendor_if_needed
-export FISHGOO_MCP_AUTH_TOKEN=replace_me
+# 生成一次即可，之后仅通过轮换更换：
+export FISHGOO_MCP_AUTH_TOKEN=$(openssl rand -hex 32)
 ```
 
-Google Ads 相关认证变量建议由服务器安全配置注入，不写死在仓库里。
+要点：
+
+- `FISHGOO_MCP_AUTH_TOKEN` 必须设置，否则 MCP server 会以无鉴权模式启动并打 WARN（仅本地开发允许）。
+- Google Ads 相关认证变量建议由服务器安全配置注入，不写死在仓库里。
+- 生产部署：`.env.fishgoo-mcp` 放 `/root/raddit/` 下，systemd 通过 `EnvironmentFile=` 注入；文件权限应为 `600`。
 
 ---
 
@@ -146,11 +151,45 @@ python apps/fishgoo_mcp/server.py
 
 - 不暴露任何 Google Ads 写操作
 - 不把原始密钥写入仓库
-- 对外网入口增加 token 或反代层鉴权
 - 限制写入目录，只允许：
   - `memory/`
   - `FISHGOO_广告成长档案/`
   - `fishgoo-ad-board.html`
+
+### 9.1 应用层 Bearer 鉴权（已落地，2026-04-20）
+
+- MCP server（`apps/fishgoo_mcp/server.py`）通过 Starlette `BearerAuthMiddleware` 在协议握手前校验 `Authorization: Bearer <token>`，失败返 `401`。
+- HTTP bridge（`apps/fishgoo_mcp/bridge/app.py`）在 `do_GET` 顶部执行 `_check_auth`；`/health` 为公开白名单，用于 uptime 探活；其他所有路径必须带 Bearer。
+- 两条服务的 token 源头都是 `FISHGOO_MCP_AUTH_TOKEN` 环境变量。
+- Token 为空时，两条服务会以"无鉴权模式"启动并打 WARN；**禁止在公网环境下以无鉴权模式跑**。
+
+### 9.2 Token 轮换
+
+```bash
+ssh root@<server>
+NEW_TOKEN=$(openssl rand -hex 32)
+# 编辑 /root/raddit/.env.fishgoo-mcp，把 FISHGOO_MCP_AUTH_TOKEN 改成 $NEW_TOKEN
+sudo systemctl restart fishgoo-mcp fishgoo-mcp-bridge
+sudo systemctl status fishgoo-mcp fishgoo-mcp-bridge
+```
+
+然后通知所有接入的 Claude 客户端/脚本更新 Bearer。旧 token 重启完立刻失效。
+
+### 9.3 验证清单
+
+远程部署后用下面三条确认鉴权生效：
+
+```bash
+# 1) 健康探活：不带 token 也应该 200
+curl -s https://mcp.perrilee.com/fishgoo-bridge/health
+
+# 2) 其他 bridge 路径：无 token 必须 401
+curl -i https://mcp.perrilee.com/fishgoo-bridge/memory/overview
+
+# 3) 带正确 token：200 + JSON
+curl -s -H "Authorization: Bearer $NEW_TOKEN" \
+     https://mcp.perrilee.com/fishgoo-bridge/memory/overview | head -30
+```
 
 ---
 

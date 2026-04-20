@@ -1,3 +1,5 @@
 google-ads-mcp>=0.0.1
 mcp>=1.2.0
 pydantic>=2.0.0
+starlette>=0.37.0
+uvicorn>=0.30.0
