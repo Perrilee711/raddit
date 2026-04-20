@@ -120,6 +120,53 @@
     .tab-panel.active {
       display: block;
     }
+    .month-switcher {
+      display: flex;
+      gap: 10px;
+      margin: 18px 0 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .month-switcher-label {
+      font-size: 13px;
+      color: var(--muted, #6b7280);
+      margin-right: 4px;
+    }
+    .month-btn {
+      padding: 8px 16px;
+      border: 1px solid #d5dce4;
+      border-radius: 999px;
+      background: #ffffff;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      color: #4b5563;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .month-btn:hover {
+      border-color: #2f6fde;
+      color: #111827;
+    }
+    .month-btn.active {
+      background: #2f6fde;
+      color: #ffffff;
+      border-color: #2f6fde;
+      font-weight: 600;
+    }
+    .month-btn.active .pill {
+      background: rgba(255,255,255,0.22) !important;
+      color: #ffffff !important;
+      border-color: transparent !important;
+    }
+    .month-content {
+      display: none;
+    }
+    .month-content.active {
+      display: block;
+    }
     .section-title {
       margin: 26px 0 12px;
       font-size: 24px;
@@ -1141,11 +1188,161 @@
     <section class="tab-panel" id="tab-ceo-report">
       <h2 class="section-title">📈 月报预览</h2>
 
-      <!-- AUTO:MONTHLY_REPORT:START -->
-      <div class="callout">
-        <strong>📅 2026 年 3 月 SEM 月报 · v1 · 给 CEO</strong><br>
-        数据时段：2026-03-01 ~ 2026-03-31（完整月）· 汇率 <strong>6.8921</strong> 管理口径 · 只 SEM 渠道 · 每月 1-2 号更新下一期
+      <div class="month-switcher">
+        <span class="month-switcher-label">选择月份：</span>
+        <button class="month-btn active" data-month="2026-04">📅 2026 年 4 月 <span class="pill pill-warn">partial 20d</span></button>
+        <button class="month-btn" data-month="2026-03">📅 2026 年 3 月 <span class="pill pill-ok">完整月</span></button>
       </div>
+
+      <!-- AUTO:MONTHLY_REPORT:2026-04:START -->
+      <div class="month-content active" data-month-content="2026-04">
+        <div class="callout">
+          <strong>📅 2026 年 4 月 SEM 月报 · v1 partial · 截至 4/20</strong><br>
+          <strong>⚠️ 这是月中快照，不是完整月评价</strong>。数据时段：2026-04-01 ~ 2026-04-20（20 天，占完整月 2/3）· 汇率 <strong>6.8921</strong> · 完整月版预计 <strong>5/1-2 发布</strong>。
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>🎯 Executive Summary（30 秒版本）</h3>
+          <p style="line-height:1.8;"><strong>4 月前 20 天：花费 <code>$514</code>，真实总营收 <code>$1,387</code>，ROAS <code>2.70</code></strong>（较 3 月 <code>1.05</code> 爬升 2.6 倍）。按 30 天 pro-rata 估算全月花费 ~$770 / 营收 ~$2,080。</p>
+          <p style="line-height:1.8;">💡 <strong>今天必须让 CEO 看到的 2 件事</strong>：<br>
+          <strong>①</strong> <strong class="good">Measurement 可能部分修复了</strong> —— Pmax- 本月 <code>all_conv_value = $1,218.55</code>，Metabase 真实支付 GMV = <code>$1,219.34</code>，差异仅 <strong>$0.79</strong>（失真 1.001x，3 月还是 2.3x）<br>
+          <strong>②</strong> <strong class="warn">支付漏斗继续恶化</strong> —— 3 月 24.3% → 4 月前 20 天 13.2%，是全月最大单点风险</p>
+        </div>
+
+        <div class="grid grid-4" style="margin-top:16px;">
+          <div class="metric-card">
+            <div class="metric-label">4 月 partial Ads 花费</div>
+            <div class="metric-value">$514</div>
+            <div class="metric-note">vs 3 月 $2,272 · 收敛后降 66%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">4 月 partial 总营收</div>
+            <div class="metric-value">$1,387</div>
+            <div class="metric-note">vs 3 月 $2,378 · pro-rata 估 $2,080</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">4 月 partial ROAS</div>
+            <div class="metric-value good">2.70</div>
+            <div class="metric-note">vs 3 月 1.05 · <strong>+2.6 倍</strong></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Ads value 失真倍数</div>
+            <div class="metric-value good">1.001x</div>
+            <div class="metric-note">vs 3 月 2.3x · 🎯 可能已修复</div>
+          </div>
+        </div>
+
+        <div class="grid grid-4" style="margin-top:16px;">
+          <div class="metric-card">
+            <div class="metric-label">4 月 partial 新用户</div>
+            <div class="metric-value">43</div>
+            <div class="metric-note">vs 3 月 132 · 流量精选</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">4 月 partial 支付订单</div>
+            <div class="metric-value">43</div>
+            <div class="metric-note">vs 3 月 59 · 人均 1 单</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">下单→支付率</div>
+            <div class="metric-value warn">13.2%</div>
+            <div class="metric-note">vs 3 月 24.3% · 🚨 恶化</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">下单 GMV (CNY)</div>
+            <div class="metric-value">¥63.5K</div>
+            <div class="metric-note">已超 3 月完整月 ¥46.4K</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>🎯 惊喜发现 · Measurement 可能在 4 月被部分修复了</h3>
+          <table>
+            <tr><th>数据源</th><th>Pmax- 4 月前 20 天 value</th></tr>
+            <tr><td>Google Ads API <code>all_conversions_value</code></td><td><strong>$1,218.55</strong></td></tr>
+            <tr><td>Metabase 业务后台 支付 GMV（USD）</td><td><strong>$1,219.34</strong></td></tr>
+            <tr style="background:rgba(15,157,111,0.06);"><td><strong>差异</strong></td><td><strong>$0.79（0.06%）</strong></td></tr>
+          </table>
+          <div class="metric-note" style="margin-top:10px;">
+            <strong>需要 CEO 帮我们问技术</strong>：3 月底或 4 月初，是否有人动过 GTM 里的 <code>fishgoo (web) purchase</code> 事件配置？如果动过 → Measurement 修好了，下周可换 MAX_CONVERSION_VALUE bidding；如果没动过 → 需深挖是巧合还是某种 attribution 自修复。
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>🚨 支付漏斗继续恶化（全月最大单点风险）</h3>
+          <table>
+            <tr><th>月份</th><th>下单 GMV (CNY)</th><th>支付 GMV (CNY)</th><th>支付率（金额口径）</th></tr>
+            <tr><td>2 月</td><td>¥23,712</td><td>¥15,489</td><td><span class="pill pill-ok">65.3%</span></td></tr>
+            <tr><td>3 月</td><td>¥46,356</td><td>¥11,283</td><td><span class="pill pill-warn">24.3%</span></td></tr>
+            <tr style="background:rgba(180,83,9,0.08);"><td><strong>4 月 partial (20d)</strong></td><td>¥63,458</td><td>¥8,404</td><td><span class="pill pill-danger">13.2%</span></td></tr>
+          </table>
+          <div class="metric-note" style="margin-top:10px;">
+            <strong>翻译成 CEO 视角</strong>：4 月下单 GMV 已超 3 月完整月（下单端没问题），但每 100 个下单 2 月 65 个付款，现在只剩 13 个。**按趋势估算 4 月完整月 $12,000 USD 的下单订单会漏出**。问题不在流量，在支付流程本身。<strong>产品 / 技术本周要排查出根因</strong>。
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>👥 推广者拆分 · simon 首月超预期 ⭐</h3>
+          <table>
+            <tr><th>推广者</th><th>归属</th><th>新用户</th><th>下单</th><th>支付</th><th>下单 GMV</th><th>支付 GMV</th><th>总营收</th><th>支付率</th></tr>
+            <tr><td>Jasonq385</td><td>ben</td><td>27</td><td>79</td><td>23</td><td>$8,271</td><td>$724</td><td>$942</td><td><span class="pill pill-warn">29.1%</span></td></tr>
+            <tr style="background:rgba(15,157,111,0.08);"><td><strong>simon 🆕</strong></td><td>perri</td><td>16</td><td>26</td><td><strong>20</strong></td><td>$936</td><td>$496</td><td>$444</td><td><span class="pill pill-ok"><strong>76.9%</strong> ⭐</span></td></tr>
+            <tr style="background:rgba(47,111,222,0.05);"><td><strong>SEM 合计</strong></td><td>—</td><td>43</td><td>105</td><td>43</td><td>$9,207</td><td>$1,219</td><td>$1,387</td><td>40.9%</td></tr>
+          </table>
+          <div class="metric-note" style="margin-top:10px;">
+            simon 支付率 <strong>77% vs Jasonq385 29%</strong>（差 2.6 倍）· simon 人均 1.25 支付订单说明有复购。2 周数据<strong>不足以 scale 决策</strong>但足以"维持信号收集"：5/15 再 review 一次，如果支付率稳定 50%+ 就讨论加资源。
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:16px;">
+          <div class="card">
+            <h3>✅ 4 月 partial 做得好的 3 件事</h3>
+            <ul style="line-height:1.9;">
+              <li><strong>收敛决策账面回报兑现</strong>（ROAS 1.05 → 2.70，+2.6x）</li>
+              <li><strong>Measurement 失真可能修复</strong>（1.001x · 属实则下周换 bidding）</li>
+              <li><strong>simon 超预期</strong>（支付率 77%，值得继续观察）</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>⚠️ 4 月 partial 发现的 3 个风险</h3>
+            <ul style="line-height:1.9;">
+              <li><strong>支付漏斗继续恶化</strong>（13.2% · 本月最大单点）</li>
+              <li><strong>总营收按 pro-rata -12%</strong>（需下半月反弹）</li>
+              <li><strong>PMax 结构仍脆弱</strong>（单 asset group / AVERAGE strength）</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>🚀 4 月下半月（4/21 - 4/30）3 件核心动作</h3>
+          <table>
+            <tr><th>#</th><th>动作</th><th>优先级</th><th>负责人</th></tr>
+            <tr><td>1</td><td><strong>验证 GTM / purchase event 是否被改过，若已修复则 4/25 前 Pmax- 换 MAX_CONVERSION_VALUE bidding</strong></td><td><span class="pill pill-danger">P0</span></td><td>Perri + 技术</td></tr>
+            <tr><td>2</td><td><strong>排查支付漏斗恶化根因（对比 2 月 vs 4 月流程差异），本周出定位报告</strong></td><td><span class="pill pill-danger">P0</span></td><td>产品 + Perri</td></tr>
+            <tr><td>3</td><td>Pmax 加 brand exclusion + 改地域 PRESENCE + 开 non-brand search MVP</td><td><span class="pill pill-warn">P1</span></td><td>Perri 自己</td></tr>
+          </table>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>🧭 需要 CEO 本周就决定的 2 件事</h3>
+          <ul style="line-height:1.9;">
+            <li><strong>① 推动技术本周内验证 GTM tag + 修 purchase event</strong> · 如 Measurement 确认修复，下周就能安全 scale，等到 5 月就迟了</li>
+            <li><strong>② 支付流程排查作为产品部门本周 P0</strong> · 每拖一天漏出约 $600 USD 潜在营收</li>
+          </ul>
+        </div>
+
+        <div class="callout" style="margin-top:16px;">
+          📄 <strong>完整月报 md</strong>：<a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/06_%E6%9C%88%E5%BA%A6CEO%E6%B1%87%E6%8A%A5/2026-04_SEM%E6%9C%88%E6%8A%A5_%E7%BB%99CEO_partial.md" target="_blank" rel="noopener">📎 在 GitHub 打开 4 月 partial 版</a> · 5/1-2 发布完整月 v1
+        </div>
+      </div>
+      <!-- AUTO:MONTHLY_REPORT:2026-04:END -->
+
+      <!-- AUTO:MONTHLY_REPORT:2026-03:START -->
+      <div class="month-content" data-month-content="2026-03">
+        <div class="callout">
+          <strong>📅 2026 年 3 月 SEM 月报 · v1 · 给 CEO</strong><br>
+          数据时段：2026-03-01 ~ 2026-03-31（完整月）· 汇率 <strong>6.8921</strong> 管理口径 · 只 SEM 渠道 · 每月 1-2 号更新下一期
+        </div>
 
       <div class="card" style="margin-top:16px;">
         <h3>🎯 Executive Summary（30 秒版本）</h3>
@@ -1282,8 +1479,9 @@
         🗂️ <strong>月报归档目录</strong>：<a href="https://github.com/Perrilee711/raddit/tree/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/06_%E6%9C%88%E5%BA%A6CEO%E6%B1%87%E6%8A%A5" target="_blank" rel="noopener">🗂️ 查看所有月报</a><br>
         🔗 <strong>关联：</strong>
         <a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/03_%E5%90%8E%E7%BB%AD%E8%A7%82%E6%B5%8B%E8%AE%A1%E5%88%92/Day26_%E6%B7%B1%E5%BA%A6%E5%AE%A1%E8%AE%A1_%E5%90%88%E4%BC%99%E4%BA%BA%E8%A7%86%E8%A7%92_2026-04-20.md" target="_blank" rel="noopener">Day 26 深度审计 v3.1</a>
+        </div>
       </div>
-      <!-- AUTO:MONTHLY_REPORT:END -->
+      <!-- AUTO:MONTHLY_REPORT:2026-03:END -->
     </section>
   </div>
 
@@ -1304,6 +1502,17 @@
         Object.entries(panels).forEach(([panelKey, panel]) => {
           panel.classList.toggle('active', panelKey === key);
         });
+      });
+    });
+
+    // Month switcher inside 月报预览 Tab
+    const monthBtns = document.querySelectorAll('.month-btn');
+    const monthContents = document.querySelectorAll('.month-content');
+    monthBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.month;
+        monthBtns.forEach((b) => b.classList.toggle('active', b === btn));
+        monthContents.forEach((c) => c.classList.toggle('active', c.dataset.monthContent === key));
       });
     });
   </script>
