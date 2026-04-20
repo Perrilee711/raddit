@@ -1,0 +1,14 @@
+[Unit]
+Description=Fishgoo Ads OS MCP HTTP Bridge
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/raddit
+EnvironmentFile=/root/raddit/.env.fishgoo-mcp
+ExecStart=/root/raddit/.venv/bin/python /root/raddit/apps/fishgoo_mcp/bridge/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

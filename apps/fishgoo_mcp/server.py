@@ -17,7 +17,14 @@ except ImportError as exc:  # pragma: no cover - runtime dependency path
 
 
 settings = get_settings()
-mcp = FastMCP("Fishgoo Ads OS MCP")
+mcp = FastMCP(
+    "Fishgoo Ads OS MCP",
+    host=settings.host,
+    port=settings.port,
+    streamable_http_path="/mcp",
+    stateless_http=True,
+    log_level=settings.log_level,
+)
 
 
 @mcp.tool(name="ads_daily_audit")
@@ -58,7 +65,7 @@ def audit_timeline() -> str:
 
 
 def main() -> None:
-    mcp.run()
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":

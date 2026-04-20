@@ -15,6 +15,12 @@ from typing import Any
 
 
 def load_google_ads_env() -> None:
+    if os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"):
+        project_id = os.environ.get("GOOGLE_PROJECT_ID")
+        if project_id:
+            os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
+        return
+
     claude_config = Path.home() / ".claude.json"
     payload = json.loads(claude_config.read_text())
     env = payload["mcpServers"]["google-ads-mcp"]["env"]
