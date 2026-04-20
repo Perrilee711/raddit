@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from apps.fishgoo_mcp.memory.builder import build_audit_timeline
 from apps.fishgoo_mcp.memory.readers import read_current_truth
-from apps.fishgoo_mcp.paths import GENERATED_BOARD_HTML, GENERATED_DAILY_DIR, GENERATED_DAILY_JSON_DIR
+from apps.fishgoo_mcp.paths import (
+    BOARD_HTML,
+    GENERATED_BOARD_HTML,
+    GENERATED_DAILY_DIR,
+    GENERATED_DAILY_JSON_DIR,
+)
 
 
 DAY1_DATE = date(2026, 3, 26)
@@ -238,7 +244,128 @@ def write_generated_feedback(payload: dict[str, Any], audit_date: date, refreshe
     return path
 
 
+def _live_status_label(summary: dict[str, Any]) -> tuple[str, str]:
+    today_cost = summary["today"]["cost_usd"]
+    yesterday_cost = summary["yesterday"]["cost_usd"]
+    if today_cost == 0:
+        return (
+            "晨间未起量",
+            "当前时点仍为 0 花费；若 14:00 仍 0 则按全天异常处理",
+        )
+    if yesterday_cost > 0 and today_cost < yesterday_cost * 0.5:
+        return (
+            "起量偏慢",
+            f"今日 ${today_cost:.2f} 未达昨日 ${yesterday_cost:.2f} 的一半",
+        )
+    return (
+        "正常起量",
+        f"今日已花 ${today_cost:.2f} / 昨日 ${yesterday_cost:.2f}",
+    )
+
+
+def _most_important_action(current_truth: dict[str, Any]) -> str:
+    actions = current_truth.get("next_actions_excerpt") or []
+    for line in actions:
+        text = line.lstrip("- ").strip()
+        if text:
+            return text[:40]
+    return "保成交 + 修目标"
+
+
+def render_current_ops_block(
+    summary: dict[str, Any],
+    day_label: str,
+    refreshed_at: datetime,
+    current_truth: dict[str, Any],
+) -> str:
+    live_value, live_note = _live_status_label(summary)
+    day_num = day_label.replace("Day", "") or "?"
+    return (
+        '      <div class="grid grid-4">\n'
+        '        <div class="metric-card">\n'
+        '          <div class="metric-label">当前 live 状态</div>\n'
+        f'          <div class="metric-value">{live_value}</div>\n'
+        f'          <div class="metric-note">{live_note}</div>\n'
+        '        </div>\n'
+        '        <div class="metric-card">\n'
+        '          <div class="metric-label">最近一次成功 live</div>\n'
+        f'          <div class="metric-value">{refreshed_at.strftime("%Y-%m-%d")}</div>\n'
+        f'          <div class="metric-note">自动刷新于 {refreshed_at.strftime("%H:%M")}，下一次 10:00 再跑</div>\n'
+        '        </div>\n'
+        '        <div class="metric-card">\n'
+        '          <div class="metric-label">阶段判断</div>\n'
+        f'          <div class="metric-value">{day_label}</div>\n'
+        f'          <div class="metric-note">累计 {day_num} 天观测窗（自 2026-03-26 起）</div>\n'
+        '        </div>\n'
+        '        <div class="metric-card">\n'
+        '          <div class="metric-label">当前最重要任务</div>\n'
+        f'          <div class="metric-value">{_most_important_action(current_truth)}</div>\n'
+        '          <div class="metric-note">来源：memory/current_truth.json · next_actions_excerpt</div>\n'
+        '        </div>\n'
+        '      </div>'
+    )
+
+
+def render_refresh_banner(refreshed_at: datetime, day_label: str, feedback_name: str) -> str:
+    return (
+        '      <div class="metric-note" style="margin-bottom:12px;opacity:0.8;">'
+        f'自动刷新：<strong>{refreshed_at.strftime("%Y-%m-%d %H:%M:%S")}</strong> · '
+        f'{day_label} · 日审文档：<code>{feedback_name}</code> · 来源：Google Ads 只读审计'
+        '</div>'
+    )
+
+
+_AUTO_MARKER_PATTERN = re.compile(
+    r"<!--\s*AUTO:(?P<name>[A-Z_]+):START\s*-->.*?<!--\s*AUTO:(?P=name):END\s*-->",
+    re.DOTALL,
+)
+
+
+def inject_into_v3_template(template_html: str, replacements: dict[str, str]) -> str:
+    def _swap(match: re.Match) -> str:
+        name = match.group("name")
+        new_body = replacements.get(name)
+        if new_body is None:
+            return match.group(0)
+        return (
+            f"<!-- AUTO:{name}:START -->\n"
+            f"{new_body}\n"
+            f"      <!-- AUTO:{name}:END -->"
+        )
+
+    return _AUTO_MARKER_PATTERN.sub(_swap, template_html)
+
+
 def render_board_html(
+    payload: dict[str, Any],
+    refreshed_at: datetime,
+    feedback_path: Path,
+    timeline: list[dict[str, Any]],
+    current_truth: dict[str, Any],
+) -> str:
+    """Render the auto-refreshed board.
+
+    If the V3 template at `BOARD_HTML` exists, inject fresh data into the
+    AUTO:* markers and return the hybrid V3 output. Otherwise fall back to
+    the from-scratch auto board (original behaviour).
+    """
+    if BOARD_HTML.exists():
+        summary = summarize_payload(payload)
+        day_label = day_label_for_date(refreshed_at.date())
+        template = BOARD_HTML.read_text(encoding="utf-8")
+        ops_block = render_current_ops_block(summary, day_label, refreshed_at, current_truth)
+        banner_block = render_refresh_banner(refreshed_at, day_label, feedback_path.name)
+        return inject_into_v3_template(
+            template,
+            {
+                "CURRENT_OPS": ops_block,
+                "REFRESH_BANNER": banner_block,
+            },
+        )
+    return _render_fallback_board_html(payload, refreshed_at, feedback_path, timeline, current_truth)
+
+
+def _render_fallback_board_html(
     payload: dict[str, Any],
     refreshed_at: datetime,
     feedback_path: Path,
