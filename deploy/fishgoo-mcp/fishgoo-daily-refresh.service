@@ -7,7 +7,7 @@ Type=oneshot
 WorkingDirectory=/root/raddit
 EnvironmentFile=/root/raddit/.env.fishgoo-mcp
 Environment=PYTHONPATH=/root/raddit
-ExecStartPre=/usr/bin/git -C /root/raddit pull --rebase origin main
+ExecStartPre=/usr/bin/git -C /root/raddit pull --rebase --autostash origin main
 ExecStart=/root/raddit/.venv/bin/python /root/raddit/scripts/run_fishgoo_daily_refresh.py --publish
 
 [Install]

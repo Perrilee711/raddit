@@ -14,3 +14,7 @@ __pycache__/
 .deploy_keys/
 .vercel
 /data/fishgoo_generated/
+# memory/ is a runtime projection rebuilt by apps.fishgoo_mcp.memory.builder
+# Keep memory/README.md in git for documentation; ignore generated artifacts.
+memory/*.json
+memory/*.jsonl
