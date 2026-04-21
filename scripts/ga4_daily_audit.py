@@ -87,7 +87,6 @@ def pull_ga4_purchase_events(target_date: str) -> dict:
     from google.analytics.data_v1beta.types import (
         DateRange,
         Dimension,
-        DimensionFilter,
         Filter,
         FilterExpression,
         Metric,
