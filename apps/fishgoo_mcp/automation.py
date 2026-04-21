@@ -315,6 +315,89 @@ def render_refresh_banner(refreshed_at: datetime, day_label: str, feedback_name:
     )
 
 
+def _extract_day_signature(md_text: str) -> str:
+    """Extract Day-specific signature from an auto-generated Day feedback md.
+
+    Auto-generated md files share a templated first paragraph ('当前看板已经
+    切换为每日自动刷新模式...') — useless as a Day differentiator. Instead we
+    pull the 4 concrete numbers (impressions/clicks/cost/conversions) that
+    actually vary day to day.
+    """
+    impr_m = re.search(r"今日截至当前展示：`(\d+)`", md_text)
+    clicks_m = re.search(r"今日截至当前点击：`(\d+)`", md_text)
+    cost_m = re.search(r"今日截至当前花费：`\$([\d.]+)`", md_text)
+    conv_m = re.search(r"今日截至当前 Ads 转化：`([\d.]+)`", md_text)
+
+    if not any([impr_m, clicks_m, cost_m, conv_m]):
+        return "已自动日审，详见 Day 反馈 md。"
+
+    impr = impr_m.group(1) if impr_m else "-"
+    clicks = clicks_m.group(1) if clicks_m else "-"
+    cost = cost_m.group(1) if cost_m else "-"
+    conv = conv_m.group(1) if conv_m else "-"
+
+    # Determine headline judgment from cost
+    try:
+        cost_num = float(cost) if cost != "-" else 0.0
+    except ValueError:
+        cost_num = 0.0
+
+    if cost_num == 0:
+        judgment = "早盘未起量（10:00 时点 $0 花费，属正常冷启动）"
+    elif cost_num < 10:
+        judgment = f"早盘慢启动（10:00 时点 ${cost}，低于日均）"
+    else:
+        judgment = f"已正常起量（10:00 时点 ${cost}）"
+
+    return f"10:00 快照：展示 {impr} · 点击 {clicks} · 花费 ${cost} · Ads 转化 {conv}。判断：{judgment}。"
+
+
+def _html_escape(s: str) -> str:
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def render_learning_recent_block() -> str:
+    """Render Day 24+ timeline items from auto-generated daily feedback md files."""
+    from apps.fishgoo_mcp.paths import GENERATED_DAILY_DIR
+
+    if not GENERATED_DAILY_DIR.exists():
+        return "          <!-- no Day 24+ feedback yet · block will populate after first auto-refresh -->"
+
+    items = []
+    files = sorted(GENERATED_DAILY_DIR.glob("Day*反馈_*.md"))
+    for md_path in files:
+        match = re.match(r"Day(\d+)反馈_(\d{4}-\d{2}-\d{2})", md_path.stem)
+        if not match:
+            continue
+        day_num = int(match.group(1))
+        day_date = match.group(2)
+        if day_num < 24:
+            continue
+
+        text = md_path.read_text(encoding="utf-8")
+        note_raw = _extract_day_signature(text)
+        note = _html_escape(note_raw)[:280]
+
+        items.append(
+            '          <div class="timeline-item">\n'
+            f'            <div class="timeline-head"><span class="timeline-day">Day {day_num}</span>'
+            f'<span class="timeline-date">{day_date}</span>'
+            '<span class="pill pill-ok">已自动生成</span></div>\n'
+            '            <div class="timeline-focus">自动日审 TL;DR（来自 Day 反馈 md 核心结论）</div>\n'
+            f'            <div class="timeline-note">{note}</div>\n'
+            "          </div>"
+        )
+
+    if not items:
+        return "          <!-- no Day 24+ feedback yet · block will populate after first auto-refresh -->"
+    return "\n".join(items)
+
+
 def render_freshness_stamp(refreshed_at: datetime, day_label: str) -> str:
     """Render the green "page-top freshness stamp" so users instantly see this is today's data."""
     tomorrow = refreshed_at.date() + timedelta(days=1)
@@ -370,12 +453,14 @@ def render_board_html(
         ops_block = render_current_ops_block(summary, day_label, refreshed_at, current_truth)
         banner_block = render_refresh_banner(refreshed_at, day_label, feedback_path.name)
         freshness_stamp = render_freshness_stamp(refreshed_at, day_label)
+        learning_recent = render_learning_recent_block()
         return inject_into_v3_template(
             template,
             {
                 "FRESHNESS_STAMP": freshness_stamp,
                 "CURRENT_OPS": ops_block,
                 "REFRESH_BANNER": banner_block,
+                "LEARNING_RECENT": learning_recent,
             },
         )
     return _render_fallback_board_html(payload, refreshed_at, feedback_path, timeline, current_truth)
