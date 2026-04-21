@@ -88,6 +88,34 @@
       color: var(--muted);
       font-size: 13px;
     }
+    .freshness-stamp {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      padding: 11px 18px;
+      border-radius: 10px;
+      margin: 0 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.22);
+    }
+    .freshness-stamp .stamp-icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .freshness-stamp code {
+      background: rgba(255,255,255,0.22);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+    }
+    .freshness-stamp.is-stale {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+    }
     .tabbar {
       display: flex;
       flex-wrap: wrap;
@@ -387,6 +415,12 @@
 </head>
 <body>
   <div class="wrap">
+    <!-- AUTO:FRESHNESS_STAMP:START -->
+    <div class="freshness-stamp is-stale">
+      <span class="stamp-icon">⚠️</span>
+      <span>本页数据是人工版，等待首次自动刷新覆盖 · 下次自动刷新 <code>每日 10:00 CST</code></span>
+    </div>
+    <!-- AUTO:FRESHNESS_STAMP:END -->
     <section class="hero">
       <h1>FISHGOO 广告负责人看板 V3</h1>
       <p>这版看板把“优化前问题、优化后日审计、当前操盘判断、学习成长”合并到一个入口。它的目标不是只记录心得，而是让你每天真正能判断账户该怎么调，以及你自己到底进步了多少。</p>

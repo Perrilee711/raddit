@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -315,6 +315,20 @@ def render_refresh_banner(refreshed_at: datetime, day_label: str, feedback_name:
     )
 
 
+def render_freshness_stamp(refreshed_at: datetime, day_label: str) -> str:
+    """Render the green "page-top freshness stamp" so users instantly see this is today's data."""
+    tomorrow = refreshed_at.date() + timedelta(days=1)
+    next_refresh = f"{tomorrow.isoformat()} 10:00 CST"
+    return (
+        '    <div class="freshness-stamp">\n'
+        '      <span class="stamp-icon">✨</span>\n'
+        '      <span>本页数据截至：<code>'
+        f'{refreshed_at.strftime("%Y-%m-%d %H:%M:%S")}</code> · '
+        f'<strong>{day_label}</strong> · 下次自动刷新 <code>{next_refresh}</code></span>\n'
+        '    </div>'
+    )
+
+
 _AUTO_MARKER_PATTERN = re.compile(
     r"<!--\s*AUTO:(?P<name>[A-Z_]+):START\s*-->.*?<!--\s*AUTO:(?P=name):END\s*-->",
     re.DOTALL,
@@ -355,9 +369,11 @@ def render_board_html(
         template = BOARD_HTML.read_text(encoding="utf-8")
         ops_block = render_current_ops_block(summary, day_label, refreshed_at, current_truth)
         banner_block = render_refresh_banner(refreshed_at, day_label, feedback_path.name)
+        freshness_stamp = render_freshness_stamp(refreshed_at, day_label)
         return inject_into_v3_template(
             template,
             {
+                "FRESHNESS_STAMP": freshness_stamp,
                 "CURRENT_OPS": ops_block,
                 "REFRESH_BANNER": banner_block,
             },
