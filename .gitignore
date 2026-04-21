@@ -18,3 +18,4 @@ __pycache__/
 # Keep memory/README.md in git for documentation; ignore generated artifacts.
 memory/*.json
 memory/*.jsonl
+.env/
