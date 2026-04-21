@@ -890,6 +890,63 @@
       </div>
       <!-- AUTO:CURRENT_OPS:END -->
 
+      <!-- AUTO:REAL_ROAS_DAILY:START -->
+      <div class="card" style="margin-top:16px;border-left:4px solid #dc2626;">
+        <h3>🎯 真实 ROAS 日报（离线归因 · Metabase 真相口径）</h3>
+        <div class="metric-note" style="margin-bottom:12px;">
+          ⚠️ <strong>Google Ads 看到的 value 信号已被证伪</strong>（GA4 purchase event duplicate firing 16× · 详见 <a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/03_%E5%90%8E%E7%BB%AD%E8%A7%82%E6%B5%8B%E8%AE%A1%E5%88%92/Measurement_%E4%B8%89%E6%BA%90%E5%AF%B9%E8%B4%A6_2026-04-21.md" target="_blank" rel="noopener">三源对账报告</a>）。本模块展示 <strong>Metabase 业务后台真相 ÷ Google Ads 真实花费</strong> 算的真实 ROAS · 数据截至 2026-04-20 · 下次更新依赖 Metabase admin 给 SA 权限（或 Perri 每周重导 Excel）
+        </div>
+
+        <div class="grid grid-4">
+          <div class="metric-card">
+            <div class="metric-label">13 天真实 ROAS（支付 GMV 口径）</div>
+            <div class="metric-value warn">2.07×</div>
+            <div class="metric-note">vs benchmark 3.68× · 约 56% · 踩盈亏平衡线</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">13 天真实 CPA</div>
+            <div class="metric-value">$14.86</div>
+            <div class="metric-note">Ads $535 / Metabase 36 单 · 建议 tCPA = $13</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">最近完整日（4/19）</div>
+            <div class="metric-value">1 单</div>
+            <div class="metric-note">Ads $49 / Metabase 1 单 / $59 GMV · ROAS 1.19×</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">今日（4/20 到收盘）</div>
+            <div class="metric-value">0 单</div>
+            <div class="metric-note">Ads $34 花费 · 等待今日支付到账</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;background:#fef3c7;">
+          <h3>📉 逐日真实 ROAS（4/8-4/20 · Metabase 支付 GMV / Ads 花费）</h3>
+          <table>
+            <tr><th>日期</th><th>Ads 花费</th><th>Metabase 支付单</th><th>Metabase GMV (USD)</th><th>真实 ROAS</th><th>判断</th></tr>
+            <tr><td>2026-04-08</td><td>$5.36</td><td>0</td><td>$0</td><td>0</td><td><span class="pill pill-ok">低预算日</span></td></tr>
+            <tr><td>2026-04-09</td><td>$54.23</td><td>0</td><td>$0</td><td>0</td><td><span class="pill pill-danger">全损</span></td></tr>
+            <tr><td>2026-04-10</td><td>$78.89</td><td>2</td><td>$67</td><td>0.85×</td><td><span class="pill pill-warn">入不敷出</span></td></tr>
+            <tr><td>2026-04-11</td><td>$37.59</td><td>3</td><td>$59</td><td>1.57×</td><td><span class="pill pill-warn">接近平衡</span></td></tr>
+            <tr><td>2026-04-12</td><td>$46.81</td><td>10</td><td>$172</td><td>3.68×</td><td><span class="pill pill-ok">⭐ 踩 benchmark</span></td></tr>
+            <tr><td>2026-04-13</td><td>$36.33</td><td>1</td><td>$17</td><td>0.46×</td><td><span class="pill pill-danger">全损</span></td></tr>
+            <tr><td>2026-04-14</td><td>$37.61</td><td>7</td><td>$209</td><td>5.57×</td><td><span class="pill pill-ok">⭐ 超 benchmark</span></td></tr>
+            <tr><td>2026-04-15</td><td>$45.19</td><td>6</td><td>$242</td><td>5.35×</td><td><span class="pill pill-ok">⭐ 超 benchmark</span></td></tr>
+            <tr><td>2026-04-16</td><td>$31.18</td><td>6</td><td>$282</td><td>9.05×</td><td><span class="pill pill-ok">⭐ 爆发日</span></td></tr>
+            <tr><td>2026-04-17</td><td>$32.45</td><td>0</td><td>$0</td><td>0</td><td><span class="pill pill-danger">全损</span></td></tr>
+            <tr><td>2026-04-18</td><td>$45.94</td><td>0</td><td>$0</td><td>0</td><td><span class="pill pill-danger">全损</span></td></tr>
+            <tr><td>2026-04-19</td><td>$49.22</td><td>1</td><td>$59</td><td>1.19×</td><td><span class="pill pill-warn">接近平衡</span></td></tr>
+            <tr><td>2026-04-20</td><td>$34.16</td><td>0</td><td>$0</td><td>—</td><td><span class="pill pill-warn">今日未收盘</span></td></tr>
+            <tr style="background:rgba(220,38,38,0.08);font-weight:600;"><td><strong>13 天合计</strong></td><td><strong>$534.96</strong></td><td><strong>36 单</strong></td><td><strong>$1,107</strong></td><td><strong>2.07×</strong></td><td>踩盈亏线</td></tr>
+          </table>
+        </div>
+
+        <div class="metric-note" style="margin-top:10px;font-weight:600;color:#dc2626;">
+          💡 <strong>离线归因信号</strong>：13 天有 5 天「全损」（Ads 花钱 Metabase 0 单）、1 天爆发（4/16 ROAS 9×）、3 天正常跑（4/12/14/15 踩或超 benchmark）。有爆发说明账户底子在，但稳定性差 —— 优化方向不是加预算，是排查"全损日"的规律（哪个时段/哪个 asset / 哪个搜索词）。
+        </div>
+      </div>
+      <!-- AUTO:REAL_ROAS_DAILY:END -->
+
       <!-- AUTO:BUSINESS_SNAPSHOT:START -->
       <div class="card" style="margin-top:16px;">
         <h3>💼 真实业务快照（来自业务后台 · USD 口径）</h3>
