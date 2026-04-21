@@ -558,7 +558,7 @@ def render_freshness_stamp(refreshed_at: datetime, day_label: str) -> str:
 
 
 _AUTO_MARKER_PATTERN = re.compile(
-    r"<!--\s*AUTO:(?P<name>[A-Z_]+):START\s*-->.*?<!--\s*AUTO:(?P=name):END\s*-->",
+    r"<!--\s*AUTO:(?P<name>[A-Z0-9_]+):START\s*-->.*?<!--\s*AUTO:(?P=name):END\s*-->",
     re.DOTALL,
 )
 
