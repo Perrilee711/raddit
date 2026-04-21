@@ -13,6 +13,7 @@ from apps.fishgoo_mcp.paths import (
     GENERATED_BOARD_HTML,
     GENERATED_DAILY_DIR,
     GENERATED_DAILY_JSON_DIR,
+    GENERATED_GA4_DAILY_DIR,
 )
 
 
@@ -398,6 +399,150 @@ def render_learning_recent_block() -> str:
     return "\n".join(items)
 
 
+def _load_recent_ga4_days(max_days: int = 7) -> list[dict[str, Any]]:
+    """Read the last N ga4_daily/*.json files sorted by date desc."""
+    if not GENERATED_GA4_DAILY_DIR.exists():
+        return []
+    files = sorted(GENERATED_GA4_DAILY_DIR.glob("*.json"), reverse=True)[:max_days]
+    results = []
+    for p in files:
+        try:
+            results.append(json.loads(p.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return results
+
+
+def _ga4_noise_stats(day: dict[str, Any]) -> dict[str, Any]:
+    """Compute noise vs real events from a ga4_daily json payload."""
+    total = int(day.get("event_count_total") or 0)
+    dup_rows = day.get("dup_ratio_by_txn") or []
+    noise = 0
+    max_dup = 0
+    for row in dup_rows:
+        cnt = int(row.get("dup_count") or 0)
+        if cnt > max_dup:
+            max_dup = cnt
+        if row.get("transaction_id") == "(no_transaction_id)":
+            noise += cnt
+    real = max(total - noise, 0)
+    ratio = (noise / total * 100.0) if total > 0 else 0.0
+    return {
+        "date": day.get("date"),
+        "total": total,
+        "real": real,
+        "noise": noise,
+        "noise_ratio": ratio,
+        "max_dup": max_dup,
+        "unique_txn": int(day.get("unique_transactions") or 0),
+    }
+
+
+def render_ga4_noise_block() -> str:
+    """Render GA4 purchase event noise monitor card.
+
+    Pulls from data/fishgoo_generated/ga4_daily/*.json. If GTM is fixed, the
+    '(no_transaction_id)' bucket disappears → noise_ratio → 0%. This block
+    is how we'll see that fix land in production within 24h.
+    """
+    days = _load_recent_ga4_days(7)
+    if not days:
+        return (
+            '      <div class="card" style="margin-top:16px;border-left:4px solid #64748b;">\n'
+            '        <h3>🧪 GA4 purchase event 噪声监测</h3>\n'
+            '        <div class="metric-note">等待第一次自动刷新写入 ga4_daily/*.json · 明天 10:00 后自动展示</div>\n'
+            '      </div>'
+        )
+
+    latest = _ga4_noise_stats(days[0])
+    rows = [_ga4_noise_stats(d) for d in days]
+    avg_ratio = sum(r["noise_ratio"] for r in rows) / len(rows)
+
+    def _pill(ratio: float) -> str:
+        if ratio >= 50.0:
+            return '<span class="pill pill-danger">重污染</span>'
+        if ratio >= 20.0:
+            return '<span class="pill pill-warn">中等</span>'
+        if ratio > 0:
+            return '<span class="pill pill-warn">轻微</span>'
+        return '<span class="pill pill-ok">已净化</span>'
+
+    table_rows = []
+    for r in rows:
+        table_rows.append(
+            '            <tr>'
+            f'<td>{r["date"]}</td>'
+            f'<td>{r["total"]}</td>'
+            f'<td>{r["real"]}</td>'
+            f'<td style="color:#b45309;font-weight:600;">{r["noise"]}</td>'
+            f'<td>{r["noise_ratio"]:.1f}%</td>'
+            f'<td>{r["max_dup"]}</td>'
+            f'<td>{_pill(r["noise_ratio"])}</td>'
+            '</tr>'
+        )
+
+    latest_pill = _pill(latest["noise_ratio"])
+    healthy_banner = ""
+    if avg_ratio < 5.0:
+        healthy_banner = (
+            '        <div class="metric-note" style="margin-top:10px;font-weight:600;color:#059669;">\n'
+            '          ✅ <strong>GTM 已修</strong>：近 7 天平均噪声占比 < 5%，可以安全切换 Pmax MAX_CONVERSION_VALUE + tROAS。\n'
+            '        </div>'
+        )
+    elif avg_ratio >= 50.0:
+        healthy_banner = (
+            '        <div class="metric-note" style="margin-top:10px;font-weight:600;color:#dc2626;">\n'
+            '          ⚠️ <strong>GTM 未修</strong>：噪声比例依然 ≥50% · Ads 侧靠原生过滤保平安 · 技术同学修完 transaction_id condition 此处会归零。\n'
+            '        </div>'
+        )
+    else:
+        healthy_banner = (
+            '        <div class="metric-note" style="margin-top:10px;font-weight:600;color:#b45309;">\n'
+            f'          🔄 <strong>部分修复</strong>：近 7 天平均噪声 {avg_ratio:.1f}% · 已在好转 · 持续观察 3 天若继续降则可评估切 value-based bidding。\n'
+            '        </div>'
+        )
+
+    return (
+        '      <div class="card" style="margin-top:16px;border-left:4px solid #0e7490;">\n'
+        '        <h3>🧪 GA4 purchase event 噪声监测（Day 27 打通 · 每天 10:00 自动刷）</h3>\n'
+        '        <div class="metric-note" style="margin-bottom:12px;">\n'
+        f'          数据源：<code>data/fishgoo_generated/ga4_daily/*.json</code> · '
+        f'最新：<strong>{latest["date"]}</strong> · GA4 Property <code>494561223</code> · SA 拉 Data API\n'
+        '        </div>\n'
+        '        <div class="grid grid-4">\n'
+        '          <div class="metric-card">\n'
+        '            <div class="metric-label">最新一天噪声占比</div>\n'
+        f'            <div class="metric-value">{latest["noise_ratio"]:.1f}%</div>\n'
+        f'            <div class="metric-note">{latest_pill} · 空 txn_id event 占比</div>\n'
+        '          </div>\n'
+        '          <div class="metric-card">\n'
+        '            <div class="metric-label">真实 events（带 txn_id）</div>\n'
+        f'            <div class="metric-value">{latest["real"]}</div>\n'
+        f'            <div class="metric-note">Ads 侧能看到的就是这部分</div>\n'
+        '          </div>\n'
+        '          <div class="metric-card">\n'
+        '            <div class="metric-label">噪声 events（空 txn_id）</div>\n'
+        f'            <div class="metric-value" style="color:#b45309;">{latest["noise"]}</div>\n'
+        f'            <div class="metric-note">GTM 修完此处应归零</div>\n'
+        '          </div>\n'
+        '          <div class="metric-card">\n'
+        '            <div class="metric-label">7 日均噪声占比</div>\n'
+        f'            <div class="metric-value">{avg_ratio:.1f}%</div>\n'
+        f'            <div class="metric-note">{len(rows)} 天窗口 · 趋势指标</div>\n'
+        '          </div>\n'
+        '        </div>\n'
+        '        <div class="card" style="margin-top:12px;background:#ecfeff;">\n'
+        '          <h3>📊 近 7 天逐日噪声</h3>\n'
+        '          <table>\n'
+        '            <tr><th>日期</th><th>总 event</th><th>真实</th><th>噪声</th><th>噪声占比</th><th>单桶 max</th><th>判断</th></tr>\n'
+        + "\n".join(table_rows) + "\n"
+        '          </table>\n'
+        '        </div>\n'
+        + healthy_banner + "\n"
+        '      </div>'
+    )
+
+
 def render_freshness_stamp(refreshed_at: datetime, day_label: str) -> str:
     """Render the green "page-top freshness stamp" so users instantly see this is today's data."""
     tomorrow = refreshed_at.date() + timedelta(days=1)
@@ -454,6 +599,7 @@ def render_board_html(
         banner_block = render_refresh_banner(refreshed_at, day_label, feedback_path.name)
         freshness_stamp = render_freshness_stamp(refreshed_at, day_label)
         learning_recent = render_learning_recent_block()
+        ga4_noise = render_ga4_noise_block()
         return inject_into_v3_template(
             template,
             {
@@ -461,6 +607,7 @@ def render_board_html(
                 "CURRENT_OPS": ops_block,
                 "REFRESH_BANNER": banner_block,
                 "LEARNING_RECENT": learning_recent,
+                "GA4_NOISE_MONITOR": ga4_noise,
             },
         )
     return _render_fallback_board_html(payload, refreshed_at, feedback_path, timeline, current_truth)

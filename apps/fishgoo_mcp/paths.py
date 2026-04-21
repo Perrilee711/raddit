@@ -10,6 +10,7 @@ MEMORY_ROOT = REPO_ROOT / "memory"
 GENERATED_ROOT = REPO_ROOT / "data" / "fishgoo_generated"
 GENERATED_DAILY_DIR = GENERATED_ROOT / "daily_feedback"
 GENERATED_DAILY_JSON_DIR = GENERATED_ROOT / "daily_payloads"
+GENERATED_GA4_DAILY_DIR = GENERATED_ROOT / "ga4_daily"
 GENERATED_BOARD_HTML = GENERATED_ROOT / "board" / "fishgoo-ad-board.html"
 BOARD_HTML = REPO_ROOT / "fishgoo-ad-board.html"
 BOARD_MD = (

@@ -894,7 +894,7 @@
       <div class="card" style="margin-top:16px;border-left:4px solid #dc2626;">
         <h3>🎯 真实 ROAS 日报（离线归因 · Metabase 真相口径）</h3>
         <div class="metric-note" style="margin-bottom:12px;">
-          ⚠️ <strong>Google Ads 看到的 value 信号已被证伪</strong>（GA4 purchase event duplicate firing 16× · 详见 <a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/03_%E5%90%8E%E7%BB%AD%E8%A7%82%E6%B5%8B%E8%AE%A1%E5%88%92/Measurement_%E4%B8%89%E6%BA%90%E5%AF%B9%E8%B4%A6_2026-04-21.md" target="_blank" rel="noopener">三源对账报告</a>）。本模块展示 <strong>Metabase 业务后台真相 ÷ Google Ads 真实花费</strong> 算的真实 ROAS · 数据截至 2026-04-20 · 下次更新依赖 Metabase admin 给 SA 权限（或 Perri 每周重导 Excel）
+          ⚠️ <strong>Day 27 晚 v2 修正</strong>：GA4 侧 65% events 空 txn_id（非 duplicate firing），但 Google Ads 原生过滤无 txn_id 的 purchase · Ads 侧 value vs Metabase 真相只差 1.1× · 可接受（详见 <a href="https://github.com/Perrilee711/raddit/blob/main/FISHGOO_%E5%B9%BF%E5%91%8A%E6%88%90%E9%95%BF%E6%A1%A3%E6%A1%88/03_%E5%90%8E%E7%BB%AD%E8%A7%82%E6%B5%8B%E8%AE%A1%E5%88%92/Measurement_%E4%B8%89%E6%BA%90%E5%AF%B9%E8%B4%A6_2026-04-21.md" target="_blank" rel="noopener">三源对账 v2</a>）。本模块仍用 <strong>Metabase 业务后台真相 ÷ Google Ads 真实花费</strong> 做最严 ROAS 基线 · 数据截至 2026-04-20 · 下次更新等 Perri 每周导 Excel 或 B3 自动化上线
         </div>
 
         <div class="grid grid-4">
@@ -946,6 +946,13 @@
         </div>
       </div>
       <!-- AUTO:REAL_ROAS_DAILY:END -->
+
+      <!-- AUTO:GA4_NOISE_MONITOR:START -->
+      <div class="card" style="margin-top:16px;border-left:4px solid #64748b;">
+        <h3>🧪 GA4 purchase event 噪声监测</h3>
+        <div class="metric-note">等待第一次自动刷新写入 ga4_daily/*.json · 服务器 10:00 trigger 后自动展示（Day 27 打通）</div>
+      </div>
+      <!-- AUTO:GA4_NOISE_MONITOR:END -->
 
       <!-- AUTO:BUSINESS_SNAPSHOT:START -->
       <div class="card" style="margin-top:16px;">
