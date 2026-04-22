@@ -1,0 +1,30 @@
+# Fishgoo Ad Board nginx location snippet
+#
+# Paste this into the `server { ... }` block for mcp.perrilee.com (443)
+# in /etc/nginx/conf.d/cs-dashboard-mcp.conf on tencent-chinawholesalebuy.
+#
+# Why this file exists: on 2026-04-22 someone rewrote the nginx config
+# without this block, resulting in public 404 for /ad-board/. Keep this
+# snippet committed so any future rewrite can paste it back in one shot.
+#
+# Dependencies:
+#   - /var/www/fishgoo-ad-board/ directory (created by publish script)
+#   - /etc/nginx/.htpasswd.ad-board (Basic Auth · chmod 640 root:nginx)
+#   - SSL cert from Let's Encrypt
+
+    location = /ad-board {
+        return 301 /ad-board/;
+    }
+
+    location /ad-board/ {
+        alias /var/www/fishgoo-ad-board/;
+        index index.html;
+        try_files $uri $uri/ =404;
+
+        auth_basic "Fishgoo Ad Board";
+        auth_basic_user_file /etc/nginx/.htpasswd.ad-board;
+
+        # no-cache: publish script rewrites index.html daily at 10:00 CST.
+        # Without this header, browsers/CDNs may serve stale HTML.
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
